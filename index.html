@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema da Corretora · Proteção Veicular</title>
+<style>
+  :root{
+    --navy:#0E1121;--navy2:#171c30;--navy3:#222842;--gold:#F1BC5E;--gold-d:#d69f3e;
+    --bg:#eef1f7;--card:#fff;--line:#e6e9f2;--ink:#1b2033;--muted:#6b7386;--muted2:#9aa1b3;
+    --green:#16a34a;--green-bg:#e7f6ec;--red:#e0483b;--red-bg:#fdecea;--blue:#2f6df6;--blue-bg:#e9f0fe;
+    --amber:#e8912f;--amber-bg:#fdf1e0;
+    --shadow:0 1px 2px rgba(16,20,40,.06),0 8px 24px rgba(16,20,40,.06);--radius:16px;
+  }
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  .side{width:240px;background:linear-gradient(180deg,var(--navy),#0a0d18);color:#cfd4e6;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;padding:18px 14px;z-index:30}
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 16px}
+  .logo{width:44px;height:44px;border-radius:12px;background:var(--gold);color:var(--navy);font-weight:800;display:grid;place-items:center;font-size:17px;box-shadow:0 6px 18px rgba(241,188,94,.35)}
+  .brand b{color:#fff;font-size:14px;display:block;line-height:1.15}.brand span{color:var(--gold);font-size:11px}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;color:#c2c8dd;text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;transition:.15s}
+  .nav a .i{width:20px;text-align:center}
+  .nav a .cnt{margin-left:auto;background:rgba(255,255,255,.12);color:#fff;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:20px}
+  .nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav a.active{background:var(--gold);color:var(--navy);font-weight:700}.nav a.active .cnt{background:rgba(14,17,33,.18);color:var(--navy)}
+  .side-foot{margin-top:auto;padding:12px 8px 2px;font-size:11px;color:#727a94;line-height:1.6}.side-foot b{color:#aeb5cc}
+  .bkbtn{margin-top:8px;width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#dfe4f2;border-radius:9px;padding:8px;font-size:11.5px;font-weight:600;cursor:pointer}
+  .bkbtn:hover{background:rgba(241,188,94,.2)}
+
+  .main{margin-left:240px;min-width:0}
+  .topbar{position:sticky;top:0;background:rgba(238,241,247,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:14px 30px;display:flex;align-items:center;gap:14px;z-index:20}
+  .topbar h1{font-size:18px;margin:0}.topbar .sub{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 13px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s;font-family:inherit}
+  .btn:hover{border-color:var(--gold);color:var(--gold-d)}
+  .btn.primary{background:var(--gold);border-color:var(--gold);color:var(--navy)}.btn.primary:hover{background:var(--gold-d);border-color:var(--gold-d);color:#fff}
+  .btn.sm{padding:6px 10px;font-size:11.5px}
+  .btn.danger{color:var(--red)}.btn.danger:hover{border-color:var(--red)}
+
+  .wrap{padding:24px 30px 60px;max-width:1180px}
+  .page{display:none;animation:fade .22s}.page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .section-title{display:flex;align-items:center;gap:10px;margin:24px 0 13px;font-size:13.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+  .section-title:first-child{margin-top:2px}.section-title .bar{width:4px;height:16px;background:var(--gold);border-radius:3px}
+  .hint{font-size:12px;color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0}
+  .mini{font-size:11.5px;color:var(--muted2)}
+
+  .grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .kpi .lbl{font-size:12px;color:var(--muted);font-weight:600}
+  .kpi .val{font-size:22px;font-weight:800;margin-top:8px;letter-spacing:-.5px}.kpi .foot{font-size:11.5px;color:var(--muted2);margin-top:4px}
+  .kpi.dark{background:linear-gradient(140deg,var(--navy),var(--navy3));color:#fff;border:none}.kpi.dark .lbl{color:var(--gold)}.kpi.dark .foot{color:#aab1c8}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 3px;font-size:14.5px}.card .csub{color:var(--muted);font-size:12px;margin-bottom:12px}
+
+  .bigbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:8px}
+  .bigbtn{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 18px;cursor:pointer;text-align:center;transition:.15s}
+  .bigbtn:hover{border-color:var(--gold);transform:translateY(-2px)}
+  .bigbtn .ic{font-size:30px}.bigbtn b{display:block;margin-top:8px;font-size:14.5px}.bigbtn span{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
+
+  /* ===== dashboard ===== */
+  .fdate{padding:7px 9px;border:1px solid var(--line);border-radius:9px;font-size:12.5px;font-family:inherit;background:#fafbfe;color:var(--ink)}
+  .fdate:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(241,188,94,.2)}
+  .fpre{border:1px solid var(--line);background:#fff;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:20px;cursor:pointer;font-family:inherit}
+  .fpre:hover{border-color:var(--gold);color:var(--gold-d)}
+  .fpre.on{background:var(--navy);border-color:var(--navy);color:var(--gold)}
+  .dash2{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
+  @media(max-width:940px){.dash2{grid-template-columns:1fr}}
+  .pend{display:flex;flex-direction:column;gap:8px}
+  .pitem{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:11px;padding:10px 13px;font-size:12.8px;cursor:pointer;transition:.13s;background:#fafbfe}
+  .pitem:hover{border-color:var(--gold);background:#fffdf7}
+  .pitem .pic{font-size:17px;flex-shrink:0}
+  .pitem .ptx{flex:1;min-width:0}.pitem .ptx b{color:var(--navy)}
+  .pitem .ptag{flex-shrink:0}
+  .pok{display:flex;align-items:center;gap:10px;background:var(--green-bg);border:1px solid #bfe5cc;border-radius:11px;padding:13px 15px;font-size:13px;color:#166534;font-weight:600}
+  .chartrow{display:flex;align-items:flex-end;gap:8px;height:150px;padding:4px 2px 0}
+  .cbar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+  .cbar .bfill{width:100%;max-width:46px;background:linear-gradient(180deg,var(--gold),var(--gold-d));border-radius:7px 7px 3px 3px;min-height:3px;transition:.3s}
+  .cbar .bval{font-size:10.5px;font-weight:700;color:var(--navy);white-space:nowrap}
+  .cbar .blab{font-size:10.5px;color:var(--muted2);white-space:nowrap}
+  .legend{display:flex;flex-direction:column;gap:7px;font-size:12px}
+  .legend .li{display:flex;align-items:center;gap:8px}
+  .legend .dot{width:11px;height:11px;border-radius:4px;flex-shrink:0}
+  .legend .ln{flex:1;color:#454c60;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .legend .lv{font-weight:700;color:var(--navy)}
+  .funrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px}
+  .funrow .fl{width:78px;color:var(--muted);font-weight:600;flex-shrink:0}
+  .funrow .ftrack{flex:1;background:#eef0f5;border-radius:8px;height:20px;overflow:hidden}
+  .funrow .fbar{height:100%;border-radius:8px;min-width:2px;transition:.3s}
+  .funrow .fv{width:26px;text-align:right;font-weight:800;color:var(--navy);flex-shrink:0}
+
+  /* ===== botões Sim/Não do editor de proposta ===== */
+  .cyn{gap:3px}
+  .yn{border:1px solid var(--line);background:#fff;border-radius:6px;width:24px;height:24px;font-size:11px;font-weight:800;cursor:pointer;color:#b6bccb;flex-shrink:0;padding:0;line-height:1}
+  .yn:hover{border-color:var(--gold)}
+  .yn.s.on{background:var(--green);border-color:var(--green);color:#fff}
+  .yn.n.on{background:var(--red);border-color:var(--red);color:#fff}
+  .cpy{border:1px solid var(--line);background:#fff;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;color:var(--muted);padding:3px 8px;font-family:inherit;white-space:nowrap}
+  .cpy:hover{border-color:var(--gold);color:var(--gold-d)}
+
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
+  thead th{background:#fafbfe;text-align:left;padding:11px 13px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}tbody tr:hover{background:#fbfcfe}
+  .r{text-align:right!important}
+  .pos{color:var(--green);font-weight:700}.neg{color:var(--red);font-weight:700}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .b-ok{background:var(--green-bg);color:var(--green)}.b-wait{background:var(--amber-bg);color:var(--amber)}
+  .b-red{background:var(--red-bg);color:var(--red)}.b-mut{background:#eef0f5;color:var(--muted)}.b-blue{background:var(--blue-bg);color:var(--blue)}
+  .cli{display:flex;align-items:center;gap:10px}
+  .av{width:32px;height:32px;border-radius:9px;background:var(--navy);color:var(--gold);display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .act{border:none;background:#eef0f5;color:var(--ink);font-weight:700;font-size:11px;padding:5px 10px;border-radius:8px;cursor:pointer;margin-left:5px;white-space:nowrap;font-family:inherit}
+  .act:hover{background:var(--gold);color:var(--navy)}.act.g{background:var(--green-bg);color:var(--green)}.act.g:hover{background:var(--green);color:#fff}
+  .act.r{background:var(--red-bg);color:var(--red)}.act.r:hover{background:var(--red);color:#fff}
+
+  .inp label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px}
+  .inp input,.inp select,.inp textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;background:#fafbfe;color:var(--ink)}
+  .inp input:focus,.inp select:focus,.inp textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(241,188,94,.2)}
+  .fr{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+  .fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:11px}
+  @media(max-width:700px){.fr,.fr3{grid-template-columns:1fr}}
+
+  .modalbg{position:fixed;inset:0;background:rgba(8,11,20,.55);z-index:150;display:none;align-items:flex-start;justify-content:center;padding:26px 16px;backdrop-filter:blur(2px);overflow:auto}
+  .modalbg.on{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+  .modal.wide{max-width:760px}
+  .modal .mh{padding:15px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal .mh h3{margin:0;font-size:16px}.modal .mb{padding:18px 22px}.modal .mf{padding:13px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  .x{border:none;background:none;font-size:18px;color:var(--muted);cursor:pointer;width:30px;height:30px;border-radius:8px}.x:hover{background:#eef0f5}
+
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--navy);color:#fff;padding:12px 20px;border-radius:11px;font-size:13.5px;box-shadow:0 12px 40px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.3s;z-index:300;display:flex;gap:9px;align-items:center;max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}#toast .tk{color:var(--gold);font-weight:800}
+
+  .alertbar{background:#fdf6e4;border:1px solid #ecd9a0;border-radius:12px;padding:11px 15px;font-size:12.5px;color:#7a5c14;margin-bottom:14px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .alertbar b{color:var(--navy)}
+
+  .hamb{display:none;background:var(--card);border:1px solid var(--line);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer}
+  .side-x{display:none}
+  @media(max-width:820px){
+    .side{transform:translateX(-100%);transition:transform .25s;box-shadow:0 0 50px rgba(0,0,0,.5);z-index:40}
+    .side.open{transform:none}
+    .side-x.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
+    .main{margin-left:0}.wrap{padding:18px 14px 60px}
+    .hamb{display:inline-flex;align-items:center;justify-content:center}
+  }
+
+  /* ===== editor de proposta ===== */
+  .ops{display:grid;grid-template-columns:200px repeat(var(--nop,3),1fr);font-size:12.6px;min-width:700px}
+  .ops>div{padding:5px 6px;border-bottom:1px solid #eef1f6;display:flex;align-items:center}
+  .ops .rowlab{color:var(--muted);font-size:11.8px;font-weight:600}
+  .ops .ophd{background:#f2f5fa;border-bottom:1px solid var(--line);flex-direction:column;align-items:stretch;gap:4px;padding:8px 6px}
+  .ops .ophd input{font-weight:700;color:var(--navy);text-align:center}
+  .ops input{width:100%;padding:5px 7px;border:1px solid transparent;border-radius:6px;font-size:12.6px;font-family:inherit;background:#fafbfe}
+  .ops input:hover{border-color:var(--line)}
+  .ops input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .ops .chk{justify-content:center;gap:5px;font-size:11px;color:var(--muted)}
+  .scrollx{overflow-x:auto}
+  table.ed{width:100%;border-collapse:collapse;font-size:12.6px;min-width:760px}
+  table.ed th{background:#f2f5fa;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;padding:6px 5px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.ed td{padding:3px;border-bottom:1px solid #eef1f6}
+  table.ed input{width:100%;padding:6px 8px;border:1px solid transparent;border-radius:7px;font-size:12.6px;font-family:inherit;background:#fafbfe}
+  table.ed input:hover{border-color:var(--line)}
+  table.ed input:focus{outline:0;border-color:var(--gold);background:#fff}
+  .del{background:transparent;border:0;color:#c3c9d6;font-size:14px;cursor:pointer;padding:3px 6px}
+  .del:hover{color:var(--red)}
+  .fbadge{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.4px}
+  .fbadge.frota{background:var(--navy);color:var(--gold)}
+  .fbadge.unico{background:#e7ecf5;color:var(--muted)}
+
+  /* ===== documento proposta (overlay + print) ===== */
+  #propOverlay{display:none;position:fixed;inset:0;background:rgba(10,13,22,.6);z-index:180;overflow:auto;padding:24px 14px}
+  #propOverlay.on{display:block}
+  .po-doc{max-width:860px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+  .po-bar{position:sticky;top:0;display:flex;gap:10px;justify-content:flex-end;background:#fff;padding:12px 20px;border-bottom:1px solid var(--line);z-index:5}
+  .dochead{background:var(--navy);color:#fff;padding:24px 34px;display:flex;align-items:center;gap:17px}
+  .dochead .lg{width:54px;height:54px;border:2px solid var(--gold);border-radius:13px;display:grid;place-items:center;color:var(--gold);font-family:Georgia,serif;font-weight:bold;font-size:16px;flex-shrink:0}
+  .dochead .t1{font-size:19px;font-weight:800}
+  .dochead .t2{font-size:12px;color:var(--gold);margin-top:2px}
+  .dochead .meta{margin-left:auto;text-align:right;font-size:11px;color:#c9d0e0;line-height:1.6}
+  .dochead .meta b{color:#fff}
+  .dsec{padding:18px 34px 4px}
+  .dsec h3{font-size:13.5px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .dsec h3 .bdg{margin-left:auto}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:5px 24px;font-size:12.5px}
+  .kv .it{display:flex;gap:8px;border-bottom:1px dashed #e8ebf2;padding:4px 0}
+  .kv .k{color:var(--muted);font-size:11.5px;min-width:125px}
+  .kv .v{font-weight:600}
+  table.dt{width:100%;border-collapse:collapse;font-size:12px}
+  table.dt th{background:var(--navy);color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;padding:6px 8px;text-align:left}
+  table.dt td{padding:5px 8px;border-bottom:1px solid #eef1f6}
+  table.dt tr:nth-child(even) td{background:#fafbfd}
+  table.dt .r{text-align:right;white-space:nowrap}
+  table.dt tfoot td{background:#f5f2ea;font-weight:700;color:var(--navy);border-top:2px solid var(--gold)}
+  table.cmp{width:100%;border-collapse:collapse;font-size:11.8px}
+  table.cmp th,table.cmp td{padding:5px 8px;border-bottom:1px solid #eef1f6}
+  table.cmp thead th{background:var(--navy);color:#fff;font-size:11.5px;padding:8px;text-align:center}
+  table.cmp thead th:first-child{text-align:left}
+  table.cmp td.lab{color:#454c60;font-size:11.5px;background:#fafbfd;width:205px}
+  table.cmp td.val{text-align:center;font-weight:600}
+  table.cmp .yes{color:var(--green);font-weight:700}
+  table.cmp .no{color:#98a0b0}
+  table.cmp .hi{background:#fdf7e8}
+  table.cmp thead th.hi{background:#8a6412}
+  .star{display:inline-block;font-size:9.5px;background:var(--gold);color:var(--navy);border-radius:10px;padding:1px 7px;font-weight:800;margin-left:5px;vertical-align:middle}
+  table.pay{width:100%;border-collapse:collapse;font-size:12px}
+  table.pay th{background:#f2f5fa;color:var(--navy);padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid var(--gold)}
+  table.pay td{padding:4px 8px;text-align:center;border-bottom:1px solid #eef1f6;white-space:nowrap}
+  table.pay td:first-child{text-align:left;color:var(--muted);font-weight:600}
+  table.pay .hi{background:#fdf7e8}
+  table.pay .tot td{font-weight:800;color:var(--navy);background:#f5f2ea}
+  .paynote{font-size:11px;color:var(--muted);margin-top:6px}
+  .obsbox{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:12px;color:#454c60;white-space:pre-wrap}
+  .validity{background:#fdf6e4;border:1px solid #ecd9a0;border-radius:9px;padding:8px 13px;font-size:11.5px;color:#7a5c14;margin-top:10px}
+  .validity b{color:var(--navy)}
+  .docfoot{margin-top:16px;border-top:2px solid var(--navy);padding:13px 34px 22px;display:flex;justify-content:space-between;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+  .docfoot b{color:var(--navy)}
+  .demo-flag{display:none;background:repeating-linear-gradient(45deg,#F1BC5E,#F1BC5E 14px,#e0a63f 14px,#e0a63f 28px);color:#3a2a06;font-size:11px;font-weight:800;text-align:center;padding:5px 10px;letter-spacing:.3px;position:sticky;top:0;z-index:60}
+  .demo-flag.on{display:block}
+  @media(max-width:640px){
+    #propOverlay{padding:8px 4px}
+    .po-bar{padding:9px 10px;flex-wrap:wrap}
+    .dochead{padding:16px 14px;flex-wrap:wrap;gap:12px}
+    .dochead .meta{margin-left:0;text-align:left;width:100%;display:flex;gap:12px;flex-wrap:wrap}
+    .dsec{padding:14px 14px 4px}.docfoot{padding:12px 14px}
+    .kv{grid-template-columns:1fr}
+    .topbar{padding:11px 14px}.topbar h1{font-size:16px}
+    .kpi .val{font-size:19px}
+  }
+  @page{size:A4;margin:9mm}
+  @media print{
+    body>*{display:none!important}
+    #propOverlay{display:block!important;position:static;background:#fff;padding:0;overflow:visible}
+    #propOverlay .po-bar{display:none!important}
+    .po-doc{box-shadow:none;max-width:100%;border-radius:0}
+    .dochead{padding:16px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .dsec{padding:12px 4px 4px}.docfoot{padding:10px 4px}
+    table.dt th,table.cmp thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .dsec,table.pay,.obsbox{page-break-inside:avoid}
+    table.cmp tr{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-flag" id="demoFlag">DEMONSTRAÇÃO · dados fictícios · Tech Trade e Digital</div>
+<aside class="side">
+  <div class="brand"><div class="logo" id="sideLogo">🛡️</div><div><b id="sideNome">Sua Corretora</b><span>Proteção Veicular</span></div></div>
+  <nav class="nav" id="nav">
+    <a data-p="inicio" class="active" onclick="go('inicio')"><span class="i">🏠</span> Início</a>
+    <a data-p="propostas" onclick="go('propostas')"><span class="i">📄</span> Propostas <span class="cnt" id="cntProp">0</span></a>
+    <a data-p="clientes" onclick="go('clientes')"><span class="i">👥</span> Clientes <span class="cnt" id="cntCli">0</span></a>
+    <a data-p="problemas" onclick="go('problemas')"><span class="i">🚨</span> Problemas <span class="cnt" id="cntProb">0</span></a>
+    <a data-p="fin" onclick="go('fin')"><span class="i">💰</span> Financeiro</a>
+    <a data-p="config" onclick="go('config')"><span class="i">⚙️</span> Configurações</a>
+  </nav>
+  <div class="side-foot">
+    <b>Seus dados ficam neste computador.</b><br>Faça um backup por semana.
+    <button class="bkbtn" onclick="backupJSON()">💾 Salvar backup agora</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <button class="hamb" onclick="toggleSide()">☰</button>
+    <div><h1 id="pgTitle">Início</h1><div class="sub" id="pgSub">Resumo do dia</div></div>
+  </div>
+  <div class="wrap" id="wrap"></div>
+</div>
+
+<div class="side-x" id="sideX" onclick="toggleSide()"></div>
+<div id="propOverlay"></div>
+<div id="toast"><span class="tk">✓</span><span id="tmsg"></span></div>
+<div class="modalbg" id="modal"><div class="modal" id="modalBox">
+  <div class="mh"><h3 id="mtitle">Título</h3><button class="x" onclick="closeM()">✕</button></div>
+  <div class="mb" id="mbody"></div><div class="mf" id="mfoot"></div>
+</div></div>
+<input type="file" id="fileRestore" accept=".json" style="display:none">
+<input type="file" id="fileImport" accept=".csv,.txt,.tsv" style="display:none">
+<input type="file" id="fileImportFin" accept=".csv,.txt,.tsv" style="display:none">
+
+<script>
+"use strict";
+/* =================== UTIL =================== */
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function num(v){if(v==null||v==="")return null;var s=String(v).trim().replace(/R\$\s?/,"");
+  if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,"").replace(",",".");        /* 1.989,86 */
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");          /* 98.610 (milhar sem centavos) */
+  else s=s.replace(/,/g,"");
+  var n=parseFloat(s);return isNaN(n)?null:n;}
+function brl(n){return n==null?"—":"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function brl0(n){return "R$ "+(n||0).toLocaleString("pt-BR",{maximumFractionDigits:0});}
+function ini(s){return String(s||"?").replace(/[^A-Za-zÀ-ÿ ]/g,"").split(" ").filter(Boolean).map(function(w){return w[0];}).slice(0,2).join("").toUpperCase()||"?";}
+function hojeISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function fmtData(iso){if(!iso)return "—";var p=String(iso).split("-");return p.length===3?(p[2]+"/"+p[1]+"/"+p[0]):iso;}
+function parseDataBR(s){if(!s)return null;s=String(s).trim();
+  var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);if(m){var y=m[3].length===2?("20"+m[3]):m[3];return y+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;return null;}
+function diasAte(iso){if(!iso)return null;var d=new Date(iso+"T00:00:00"),h=new Date(hojeISO()+"T00:00:00");return Math.round((d-h)/86400000);}
+function diasDesde(iso){var d=diasAte(iso);return d==null?null:-d;}
+function uid(){return "id"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function toast(m){$("tmsg").textContent=m;var t=$("toast");t.classList.add("on");clearTimeout(window._t);window._t=setTimeout(function(){t.classList.remove("on");},3000);}
+function closeM(){$("modal").classList.remove("on");}
+$("modal").addEventListener("click",function(e){if(e.target.id==="modal")closeM();});
+function toggleSide(){document.querySelector(".side").classList.toggle("open");$("sideX").classList.toggle("show");}
+function closeSide(){document.querySelector(".side").classList.remove("open");$("sideX").classList.remove("show");}
+
+/* =================== BANCO DE DADOS (localStorage) =================== */
+var DBKEY="corretoraDB_v1";
+var DB=null;
+function dbDefault(){return {
+  corretora:{nome:"",cnpj:"",tel:"",mail:""},
+  clientes:[], propostas:[], problemas:[], fin:[],
+  seqProposta:1, ultimoBackup:null
+};}
+function load(){try{DB=JSON.parse(localStorage.getItem(DBKEY))||dbDefault();}catch(e){DB=dbDefault();}
+  ["clientes","propostas","problemas","fin"].forEach(function(k){if(!Array.isArray(DB[k]))DB[k]=[];});
+  if(!DB.corretora)DB.corretora=dbDefault().corretora;
+  if(!DB.seqProposta)DB.seqProposta=1;}
+function save(){try{localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){toast("⚠️ Não consegui salvar: "+e.message);}refreshCounts();}
+function backupJSON(){
+  DB.ultimoBackup=hojeISO();save();
+  var blob=new Blob([JSON.stringify(DB,null,1)],{type:"application/json"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="Backup-Corretora-"+hojeISO()+".json";a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+  toast("💾 Backup salvo na pasta Downloads — guarde esse arquivo");}
+$("fileRestore").addEventListener("change",function(){
+  var f=this.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){try{var d=JSON.parse(r.result);
+    if(!d||!Array.isArray(d.clientes))throw new Error("arquivo não parece um backup válido");
+    DB=d;save();go("inicio");toast("✅ Backup restaurado: "+DB.clientes.length+" clientes, "+DB.propostas.length+" propostas");
+  }catch(e){toast("⚠️ "+e.message);}};
+  r.readAsText(f,"utf-8");this.value="";});
+
+/* =================== STATUS DO CLIENTE =================== */
+var STATUS={emdia:["b-ok","Em dia"],atrasado:["b-wait","Atrasado"],inadimplente:["b-red","Inadimplente"],novo:["b-blue","Novo"],inativo:["b-mut","Inativo"]};
+function stBadge(st){var s=STATUS[st]||STATUS.novo;return '<span class="badge '+s[0]+'">'+s[1]+'</span>';}
+
+/* =================== NAV =================== */
+var TITLES={inicio:["Início","Resumo do dia"],propostas:["Propostas","Orçamentos comparativos para os clientes"],
+  clientes:["Clientes","Sua carteira, com a situação de cada um"],problemas:["Problemas / Sinistros","Nada fica parado sem você saber"],
+  fin:["Financeiro","O que entra, o que sai e as comissões"],config:["Configurações","Dados da corretora e backup"],
+  editProp:["Proposta","Preencha e gere o PDF comparativo"]};
+var PAGES={};
+function go(p){
+  document.querySelectorAll(".nav a").forEach(function(a){a.classList.toggle("active",a.dataset.p===p);});
+  var t=TITLES[p]||TITLES.inicio;$("pgTitle").textContent=t[0];$("pgSub").textContent=t[1];
+  $("wrap").innerHTML=(PAGES[p]||PAGES.inicio)();
+  if(p==="editProp")drawPropEditor();
+  refreshCounts();closeSide();window.scrollTo(0,0);
+}
+function refreshCounts(){
+  $("cntProp").textContent=DB.propostas.length;
+  $("cntCli").textContent=DB.clientes.length;
+  var abertos=DB.problemas.filter(function(x){return x.status!=="resolvido"&&x.status!=="negado";}).length;
+  $("cntProb").textContent=abertos;
+  $("sideNome").textContent=DB.corretora.nome||"Sua Corretora";
+  $("demoFlag").classList.toggle("on",!!DB.demo);
+}
+
+/* =================== INÍCIO =================== */
+function alertas(){
+  var out=[];
+  var renov=DB.clientes.filter(function(c){var d=diasAte(c.renovacao);return d!=null&&d>=0&&d<=30;});
+  if(renov.length)out.push({ic:"🔄",txt:"<b>"+renov.length+" renovação(ões)</b> nos próximos 30 dias",go:"clientes"});
+  var inad=DB.clientes.filter(function(c){return c.status==="inadimplente"||c.status==="atrasado";});
+  if(inad.length)out.push({ic:"⚠️",txt:"<b>"+inad.length+" cliente(s)</b> com pagamento atrasado ou inadimplente",go:"clientes"});
+  var parados=DB.problemas.filter(function(p){return p.status!=="resolvido"&&p.status!=="negado"&&(diasDesde(p.ultAtual||p.data)||0)>=5;});
+  if(parados.length)out.push({ic:"🚨",txt:"<b>"+parados.length+" problema(s) sem movimento há 5+ dias</b> — dê um retorno",go:"problemas"});
+  var venc=DB.propostas.filter(function(p){var d=diasAte(p.validadeAte);return p.status==="enviada"&&d!=null&&d<0;});
+  if(venc.length)out.push({ic:"⏳",txt:"<b>"+venc.length+" proposta(s) enviada(s) com validade vencida</b> — cobre uma resposta",go:"propostas"});
+  var bk=DB.ultimoBackup?diasDesde(DB.ultimoBackup):null;
+  if((bk==null&&(DB.clientes.length||DB.propostas.length))||bk>=7)out.push({ic:"💾",txt:"<b>Backup:</b> "+(bk==null?"você ainda não fez nenhum":"o último foi há "+bk+" dias")+" — clique em <b>Salvar backup</b> no menu",go:"config"});
+  return out;
+}
+/* pendências detalhadas (com nome e ação) */
+function pendencias(){
+  var out=[];
+  DB.clientes.forEach(function(c){
+    var d=diasAte(c.renovacao);
+    if(d!=null&&d>=0&&d<=30)out.push({ic:"🔄",html:"Renovação de <b>"+esc(c.nome)+"</b> — "+(d===0?"é <b>HOJE</b>":"em <b>"+d+" dia"+(d>1?"s":"")+"</b>")+" ("+fmtData(c.renovacao)+")",tag:d<=7?'<span class="badge b-red">urgente</span>':'<span class="badge b-wait">'+d+'d</span>',go:"clientes",ord:d});
+    if(d!=null&&d<0&&c.status!=="inativo")out.push({ic:"🔄",html:"Renovação de <b>"+esc(c.nome)+"</b> <b>VENCEU</b> em "+fmtData(c.renovacao),tag:'<span class="badge b-red">venceu</span>',go:"clientes",ord:-100+d});
+  });
+  DB.clientes.forEach(function(c){
+    if(c.status==="inadimplente")out.push({ic:"💸",html:"<b>"+esc(c.nome)+"</b> está <b>inadimplente</b>"+(c.mensalidade?" ("+brl(c.mensalidade)+"/mês)":""),tag:'<span class="badge b-red">cobrar</span>',go:"clientes",ord:-50});
+    else if(c.status==="atrasado")out.push({ic:"⚠️",html:"<b>"+esc(c.nome)+"</b> está com pagamento <b>atrasado</b>",tag:'<span class="badge b-wait">atrasado</span>',go:"clientes",ord:-20});
+  });
+  DB.problemas.forEach(function(p){
+    if(p.status==="resolvido"||p.status==="negado")return;
+    var dm=diasDesde(p.ultAtual||p.data)||0;
+    if(dm>=5)out.push({ic:"🚨",html:esc(p.tipo)+" de <b>"+esc(p.cliente)+"</b> está <b>parado há "+dm+" dias</b> — dê um retorno",tag:'<span class="badge b-red">parado</span>',go:"problemas",ord:-80-dm});
+  });
+  DB.propostas.forEach(function(p){
+    if(p.status!=="enviada")return;
+    var d=diasAte(p.validadeAte);
+    if(d!=null&&d<0)out.push({ic:"⏳",html:"Proposta <b>Nº "+esc(p.num)+"</b> de <b>"+esc(p.cliente.nome)+"</b> passou da validade — cobre uma resposta",tag:'<span class="badge b-wait">sem resposta</span>',go:"propostas",ord:-10});
+  });
+  var bk=DB.ultimoBackup?diasDesde(DB.ultimoBackup):null;
+  if((bk==null&&(DB.clientes.length||DB.propostas.length))||bk>=7)out.push({ic:"💾",html:"<b>Backup:</b> "+(bk==null?"você ainda não fez nenhum":"o último foi há "+bk+" dias")+" — clique em <b>Salvar backup</b>",tag:'<span class="badge b-mut">1 clique</span>',go:"config",ord:50});
+  out.sort(function(a,b){return a.ord-b.ord;});
+  return out;
+}
+function mesesAtras(n){var d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+var DONUT_CORES=["#F1BC5E","#0E1121","#2f6df6","#16a34a","#e8912f","#9aa1b3"];
+
+/* ---- filtro de período do painel ---- */
+var FILTRO={de:null,ate:null,preset:"mes"};
+function isoDe(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function filtroDefault(){var h=hojeISO();FILTRO={de:h.slice(0,7)+"-01",ate:h,preset:"mes"};}
+function inPer(d){return !!d&&d>=FILTRO.de&&d<=FILTRO.ate;}
+function diffDias(a,b){return Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);}
+function filtroPreset(p){
+  if(p==="mes")filtroDefault();
+  else if(p==="anterior"){var d=new Date();d.setDate(1);d.setDate(0);var fim=isoDe(d);FILTRO={de:fim.slice(0,7)+"-01",ate:fim,preset:"anterior"};}
+  else if(p==="ano"){FILTRO={de:hojeISO().slice(0,4)+"-01-01",ate:hojeISO(),preset:"ano"};}
+  else{var min=null;
+    DB.fin.forEach(function(l){if(l.data&&(!min||l.data<min))min=l.data;});
+    DB.propostas.forEach(function(pp){if(pp.data&&(!min||pp.data<min))min=pp.data;});
+    FILTRO={de:min||hojeISO().slice(0,7)+"-01",ate:hojeISO(),preset:"tudo"};}
+  go("inicio");
+}
+PAGES.inicio=function(){
+  if(!FILTRO.de||!FILTRO.ate)filtroDefault();
+  /* ---- KPIs do período ---- */
+  var finPer=DB.fin.filter(function(l){return inPer(l.data);});
+  var recebido=finPer.filter(function(l){return l.tipo!=="saida";}).reduce(function(a,l){return a+(l.valor||0);},0);
+  var saidasPer=finPer.filter(function(l){return l.tipo==="saida";}).reduce(function(a,l){return a+(l.valor||0);},0);
+  var comis=finPer.filter(function(l){return l.tipo==="comissao";}).reduce(function(a,l){return a+(l.valor||0);},0);
+  var abertosProb=DB.problemas.filter(function(x){return x.status!=="resolvido"&&x.status!=="negado";}).length;
+  var propsPer=DB.propostas.filter(function(p){return inPer(p.data);});
+  var enviadas=propsPer.filter(function(p){return p.status==="enviada";}).length;
+  var fechadas=propsPer.filter(function(p){return p.status==="fechada";}).length;
+  var recusadas=propsPer.filter(function(p){return p.status==="recusada";}).length;
+  var taxa=(fechadas+recusadas)>0?Math.round(fechadas/(fechadas+recusadas)*100)+"%":"—";
+  var protegido=0;
+  DB.clientes.forEach(function(c){(c.veiculos||[]).forEach(function(v){var f=num(v.fipe);if(f)protegido+=f;});});
+  var mensalRec=DB.clientes.filter(function(c){return c.status!=="inativo"&&c.mensalidade;}).reduce(function(a,c){return a+c.mensalidade;},0);
+
+  /* ---- barra do filtro de período ---- */
+  var temDados=DB.clientes.length||DB.propostas.length||DB.fin.length;
+  var h="";
+  if(temDados){
+    h+='<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">'+
+    '<b style="font-size:12.5px;color:var(--navy)">📅 Período:</b>'+
+    '<input type="date" class="fdate" value="'+FILTRO.de+'" onchange="FILTRO.de=this.value;FILTRO.preset=\'\';go(\'inicio\')">'+
+    '<span class="mini">até</span>'+
+    '<input type="date" class="fdate" value="'+FILTRO.ate+'" onchange="FILTRO.ate=this.value;FILTRO.preset=\'\';go(\'inicio\')">'+
+    '<span style="flex:1"></span>'+
+    [["mes","Este mês"],["anterior","Mês passado"],["ano","Este ano"],["tudo","Tudo"]].map(function(p){
+      return '<button class="fpre'+(FILTRO.preset===p[0]?" on":"")+'" onclick="filtroPreset(\''+p[0]+'\')">'+p[1]+'</button>';}).join("")+
+    '</div>';}
+
+  h+='<div class="grid kpis">'+
+    '<div class="kpi dark"><div class="lbl">🛡️ Valor protegido da carteira</div><div class="val">'+(protegido?brl0(protegido):"—")+'</div><div class="foot">soma FIPE dos veículos dos clientes</div></div>'+
+    '<div class="kpi"><div class="lbl">👥 Clientes ativos</div><div class="val">'+DB.clientes.filter(function(c){return c.status!=="inativo";}).length+'</div><div class="foot">'+DB.clientes.filter(function(c){return c.status==="inadimplente"||c.status==="atrasado";}).length+' com pendência de pagamento</div></div>'+
+    '<div class="kpi"><div class="lbl">💵 Mensalidades da carteira</div><div class="val">'+(mensalRec?brl0(mensalRec):"—")+'</div><div class="foot">por mês, clientes ativos</div></div>'+
+    '<div class="kpi"><div class="lbl">✅ Recebido no período</div><div class="val">'+brl0(recebido)+'</div><div class="foot">comissões: '+brl0(comis)+' · saídas: '+brl0(saidasPer)+'</div></div>'+
+    '<div class="kpi"><div class="lbl">🎯 Aproveitamento de propostas</div><div class="val">'+taxa+'</div><div class="foot">'+fechadas+' fechada(s) · '+enviadas+' aguardando · no período</div></div></div>';
+
+  /* ---- onboarding se vazio ---- */
+  if(!temDados){
+    h+='<div class="card" style="margin-top:16px;border-left:4px solid var(--gold)"><h3>👋 Bem-vindo! Por onde começar:</h3>'+
+    '<div class="csub" style="margin-top:8px;line-height:1.9">1️⃣ Vá em <b>Configurações</b> e preencha os dados da corretora (vão no cabeçalho das propostas).<br>'+
+    '2️⃣ Em <b>Clientes</b>, use <b>Importar planilha</b> pra trazer sua lista de uma vez — ou cadastre um a um.<br>'+
+    '3️⃣ Aperte <b>Nova proposta</b> e gere seu primeiro comparativo em PDF. 🎉<br><br>'+
+    '<span class="mini">Assim que houver dados, esta tela vira o seu painel: pendências do dia, gráficos de recebimento, carteira por operadora e o funil de propostas.</span></div></div>';
+    return h;}
+
+  /* ---- pendências de hoje + gráficos ---- */
+  var pend=pendencias();
+  h+='<div class="dash2" style="margin-top:16px"><div>';
+  h+='<div class="card"><h3>📋 Para hoje — '+fmtData(hojeISO())+'</h3><div class="csub">O sistema olha seus dados e lista o que precisa de você.</div><div class="pend">';
+  if(!pend.length)h+='<div class="pok">✅ Nenhuma pendência — carteira em dia. Bom trabalho!</div>';
+  else pend.slice(0,9).forEach(function(p){
+    h+='<div class="pitem" onclick="go(\''+p.go+'\')"><span class="pic">'+p.ic+'</span><span class="ptx">'+p.html+'</span><span class="ptag">'+p.tag+'</span></div>';});
+  if(pend.length>9)h+='<div class="mini" style="text-align:center">… e mais '+(pend.length-9)+' pendência(s)</div>';
+  h+='</div></div>';
+
+  /* funil de propostas (do período) */
+  var funil=[["Rascunho",propsPer.filter(function(p){return p.status==="rascunho";}).length,"#9aa1b3"],
+    ["Enviadas",enviadas,"#2f6df6"],["Fechadas",fechadas,"#16a34a"],["Recusadas",recusadas,"#e0483b"]];
+  var fmax=Math.max.apply(null,funil.map(function(f){return f[1];}).concat([1]));
+  h+='<div class="card" style="margin-top:16px"><h3>📄 Funil de propostas</h3><div class="csub">Orçamentos feitos no período escolhido.</div>';
+  funil.forEach(function(f){h+='<div class="funrow"><span class="fl">'+f[0]+'</span><div class="ftrack"><div class="fbar" style="width:'+Math.round(f[1]/fmax*100)+'%;background:'+f[2]+'"></div></div><span class="fv">'+f[1]+'</span></div>';});
+  h+='</div></div><div>';
+
+  /* recebimentos no período (por dia se período curto, por mês se longo) */
+  var porDia=diffDias(FILTRO.de,FILTRO.ate)<=31;
+  var buckets=[],vals=[];
+  if(porDia){
+    var d=new Date(FILTRO.de+"T00:00:00");
+    for(var s=0;s<62;s++){var iso=isoDe(d);buckets.push(iso);if(iso>=FILTRO.ate)break;d.setDate(d.getDate()+1);}
+    vals=buckets.map(function(b){return finPer.filter(function(l){return l.tipo!=="saida"&&l.data===b;}).reduce(function(a,l){return a+(l.valor||0);},0);});
+  }else{
+    var m=FILTRO.de.slice(0,7),fim=FILTRO.ate.slice(0,7),guard=0;
+    while(m<=fim&&guard<36){buckets.push(m);var pm=m.split("-");var dd=new Date(+pm[0],+pm[1],1);m=dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0");guard++;}
+    vals=buckets.map(function(b){return finPer.filter(function(l){return l.tipo!=="saida"&&(l.data||"").slice(0,7)===b;}).reduce(function(a,l){return a+(l.valor||0);},0);});
+  }
+  var vmax=Math.max.apply(null,vals.concat([1]));
+  var muitos=buckets.length>16;
+  h+='<div class="card"><h3>💰 Recebimentos no período</h3><div class="csub">Entradas + comissões de '+fmtData(FILTRO.de)+' a '+fmtData(FILTRO.ate)+(porDia?' · por dia':' · por mês')+'.</div>';
+  if(!vals.some(function(v){return v>0;}))h+='<div class="mini" style="padding:20px 0;text-align:center">Sem lançamentos nesse período — registre (ou importe) no <b>Financeiro</b> e o gráfico se monta sozinho.</div>';
+  else{h+='<div class="chartrow">';
+    buckets.forEach(function(b,i){
+      var lab=porDia?b.slice(8):fmtMes(b);
+      h+='<div class="cbar">'+(muitos?'':'<span class="bval">'+(vals[i]?brl0(vals[i]):"")+'</span>')+
+        '<div class="bfill" title="'+(porDia?fmtData(b):fmtMes(b))+': '+brl(vals[i])+'" style="height:'+Math.max(Math.round(vals[i]/vmax*100),2)+'%"></div>'+
+        '<span class="blab">'+((muitos&&i%2===1&&i!==buckets.length-1)?"":lab)+'</span></div>';});
+    h+='</div>';}
+  h+='</div>';
+
+  /* carteira por operadora */
+  var porOp={};
+  DB.clientes.forEach(function(c){if(c.status==="inativo")return;var o=(c.operadora||"").trim()||"(sem operadora)";porOp[o]=(porOp[o]||0)+1;});
+  var ops=Object.keys(porOp).map(function(k){return [k,porOp[k]];}).sort(function(a,b){return b[1]-a[1];});
+  if(ops.length>5){var outros=ops.slice(4).reduce(function(a,o){return a+o[1];},0);ops=ops.slice(0,4);ops.push(["Outras",outros]);}
+  h+='<div class="card" style="margin-top:16px"><h3>🤝 Carteira por operadora</h3><div class="csub">Onde estão os seus clientes.</div>';
+  if(!ops.length)h+='<div class="mini" style="padding:14px 0;text-align:center">Cadastre a operadora de cada cliente pra ver a divisão aqui.</div>';
+  else{
+    var tot=ops.reduce(function(a,o){return a+o[1];},0),acc=0,C=2*Math.PI*40,segs="";
+    ops.forEach(function(o,i){var frac=o[1]/tot;
+      segs+='<circle r="40" cx="55" cy="55" fill="none" stroke="'+DONUT_CORES[i%6]+'" stroke-width="17" stroke-dasharray="'+(frac*C).toFixed(2)+' '+C.toFixed(2)+'" stroke-dashoffset="'+(-acc*C).toFixed(2)+'" transform="rotate(-90 55 55)"/>';
+      acc+=frac;});
+    h+='<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><svg width="110" height="110" viewBox="0 0 110 110">'+segs+
+      '<text x="55" y="52" text-anchor="middle" font-size="19" font-weight="800" fill="#0E1121">'+tot+'</text><text x="55" y="67" text-anchor="middle" font-size="8.5" fill="#6b7386">clientes</text></svg>'+
+      '<div class="legend" style="flex:1;min-width:150px">'+ops.map(function(o,i){return '<div class="li"><span class="dot" style="background:'+DONUT_CORES[i%6]+'"></span><span class="ln">'+esc(o[0])+'</span><span class="lv">'+o[1]+'</span></div>';}).join("")+'</div></div>';}
+  h+='</div></div></div>';
+  return h;
+};
+
+/* =================== CLIENTES =================== */
+var cliBusca="";
+PAGES.clientes=function(){
+  var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+    '<input class="btn" style="min-width:230px;cursor:text" placeholder="🔎 Buscar por nome, placa, documento..." value="'+esc(cliBusca)+'" oninput="cliBusca=this.value;filtraCli()">'+
+    '<button class="btn primary" onclick="editCliente()">+ Novo cliente</button>'+
+    '<button class="btn" onclick="abrirImport()">⬆ Importar planilha</button></div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Contato</th><th>Veículo(s)</th><th>Operadora</th><th>Mensalidade</th><th>Renovação</th><th>Situação</th><th></th></tr></thead><tbody id="cliBody"></tbody></table></div>'+
+    '<div class="mini" style="margin-top:10px">💡 A <b>situação</b> (Em dia / Atrasado / Inadimplente) aparece também na hora de gerar proposta e no Início.</div>';
+  setTimeout(filtraCli,0);return h;
+};
+function filtraCli(){
+  var q=(cliBusca||"").toLowerCase();
+  var list=DB.clientes.filter(function(c){
+    if(!q)return true;
+    return [c.nome,c.doc,c.tel,c.operadora,(c.veiculos||[]).map(function(v){return v.placa+" "+v.modelo;}).join(" ")].join(" ").toLowerCase().indexOf(q)>=0;});
+  var b=$("cliBody");if(!b)return;
+  if(!list.length){b.innerHTML='<tr><td colspan="8" style="color:#9aa1b3">'+(DB.clientes.length?"Nenhum cliente encontrado nessa busca.":"Nenhum cliente ainda — use <b>Importar planilha</b> ou <b>+ Novo cliente</b>.")+'</td></tr>';return;}
+  b.innerHTML=list.map(function(c){
+    var d=diasAte(c.renovacao);
+    var ren=c.renovacao?(fmtData(c.renovacao)+(d!=null&&d>=0&&d<=30?' <span class="badge b-wait">'+d+'d</span>':(d!=null&&d<0?' <span class="badge b-red">venceu</span>':''))):"—";
+    var veic=(c.veiculos||[]).length?((c.veiculos||[]).length===1?(c.veiculos[0].placa||c.veiculos[0].modelo||"1 veículo"):((c.veiculos||[]).length+" veículos")):"—";
+    return '<tr><td class="cli"><div class="av">'+ini(c.nome)+'</div><div>'+esc(c.nome)+'<div class="mini">'+esc(c.doc||"")+'</div></div></td>'+
+      '<td>'+esc(c.tel||"—")+'</td><td>'+esc(veic)+'</td><td>'+esc(c.operadora||"—")+'</td>'+
+      '<td>'+(c.mensalidade!=null?brl(c.mensalidade):"—")+'</td><td>'+ren+'</td><td>'+stBadge(c.status)+'</td>'+
+      '<td><button class="act" onclick="editCliente(\''+c.id+'\')">Abrir</button><button class="act r" onclick="delCliente(\''+c.id+'\')">✕</button></td></tr>';
+  }).join("");
+}
+function editCliente(id){
+  var c=id?DB.clientes.find(function(x){return x.id===id;}):{id:null,nome:"",doc:"",tel:"",mail:"",operadora:"",mensalidade:null,renovacao:"",status:"novo",obs:"",veiculos:[]};
+  if(!c)return;
+  $("modalBox").className="modal wide";
+  $("mtitle").textContent=id?"Cliente — "+c.nome:"Novo cliente";
+  var vRows=(c.veiculos&&c.veiculos.length?c.veiculos:[{}]).map(function(v){
+    return '<tr><td><input class="cvMarca" value="'+esc(v.marca||"")+'" placeholder="Marca"></td><td><input class="cvModelo" value="'+esc(v.modelo||"")+'" placeholder="Modelo"></td>'+
+    '<td style="width:90px"><input class="cvAno" value="'+esc(v.ano||"")+'" placeholder="Ano"></td><td style="width:110px"><input class="cvPlaca" value="'+esc(v.placa||"")+'" placeholder="Placa"></td>'+
+    '<td style="width:120px"><input class="cvFipe" value="'+esc(v.fipe||"")+'" placeholder="FIPE R$"></td><td style="width:26px"><button class="del" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';}).join("");
+  $("mbody").innerHTML=
+    '<div class="fr"><div class="inp"><label>Nome / Razão social *</label><input id="cNome" value="'+esc(c.nome)+'"></div>'+
+    '<div class="inp"><label>CNPJ / CPF</label><input id="cDoc" value="'+esc(c.doc)+'"></div></div>'+
+    '<div class="fr"><div class="inp"><label>Telefone / WhatsApp</label><input id="cTel" value="'+esc(c.tel)+'"></div>'+
+    '<div class="inp"><label>E-mail</label><input id="cMail" value="'+esc(c.mail||"")+'"></div></div>'+
+    '<div class="fr3"><div class="inp"><label>Operadora atual</label><input id="cOper" value="'+esc(c.operadora)+'"></div>'+
+    '<div class="inp"><label>Mensalidade (R$)</label><input id="cMens" value="'+(c.mensalidade!=null?esc(String(c.mensalidade).replace(".",",")):"")+'"></div>'+
+    '<div class="inp"><label>Renovação (dd/mm/aaaa)</label><input id="cRen" value="'+esc(c.renovacao?fmtData(c.renovacao):"")+'"></div></div>'+
+    '<div class="fr"><div class="inp"><label>Situação de pagamento</label><select id="cSt">'+
+      Object.keys(STATUS).map(function(k){return '<option value="'+k+'"'+(c.status===k?" selected":"")+'>'+STATUS[k][1]+'</option>';}).join("")+'</select></div>'+
+    '<div class="inp"><label>Observações</label><input id="cObs" value="'+esc(c.obs||"")+'"></div></div>'+
+    '<div class="section-title" style="margin:14px 0 8px"><span class="bar"></span>Veículos <button class="btn sm" style="margin-left:auto" onclick="addVeicRow()">+ veículo</button></div>'+
+    '<div class="scrollx"><table class="ed" id="cvTable" style="min-width:560px"><thead><tr><th>Marca</th><th>Modelo</th><th>Ano</th><th>Placa</th><th>FIPE</th><th></th></tr></thead><tbody>'+vRows+'</tbody></table></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" onclick="saveCliente('+(id?('\''+id+'\''):'null')+')">💾 Salvar cliente</button>';
+  $("modal").classList.add("on");
+}
+function addVeicRow(){var tb=$("cvTable").tBodies[0];var tr=document.createElement("tr");
+  tr.innerHTML='<td><input class="cvMarca" placeholder="Marca"></td><td><input class="cvModelo" placeholder="Modelo"></td><td style="width:90px"><input class="cvAno" placeholder="Ano"></td><td style="width:110px"><input class="cvPlaca" placeholder="Placa"></td><td style="width:120px"><input class="cvFipe" placeholder="FIPE R$"></td><td style="width:26px"><button class="del" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+  tb.appendChild(tr);}
+function saveCliente(id){
+  var nome=$("cNome").value.trim();if(!nome){toast("⚠️ O nome é obrigatório");return;}
+  var veics=[].map.call($("cvTable").tBodies[0].rows,function(tr){
+    return {marca:tr.querySelector(".cvMarca").value.trim(),modelo:tr.querySelector(".cvModelo").value.trim(),
+      ano:tr.querySelector(".cvAno").value.trim(),placa:tr.querySelector(".cvPlaca").value.trim(),fipe:tr.querySelector(".cvFipe").value.trim()};
+  }).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe;});
+  var obj={id:id||uid(),nome:nome,doc:$("cDoc").value.trim(),tel:$("cTel").value.trim(),mail:$("cMail").value.trim(),
+    operadora:$("cOper").value.trim(),mensalidade:num($("cMens").value),renovacao:parseDataBR($("cRen").value)||"",
+    status:$("cSt").value,obs:$("cObs").value.trim(),veiculos:veics};
+  if(id){var i=DB.clientes.findIndex(function(x){return x.id===id;});DB.clientes[i]=obj;}else DB.clientes.push(obj);
+  save();closeM();go("clientes");toast("✅ Cliente salvo — tudo gravado neste computador");
+}
+function delCliente(id){var c=DB.clientes.find(function(x){return x.id===id;});
+  if(!confirm("Remover o cliente \""+c.nome+"\"?\n(As propostas e problemas dele não são apagados.)"))return;
+  DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});save();go("clientes");toast("Cliente removido");}
+
+/* ====== IMPORTAÇÃO DE PLANILHA (colar do Excel ou CSV) ====== */
+var IMP={rows:[],headers:[]};
+function abrirImport(){
+  $("modalBox").className="modal wide";
+  $("mtitle").textContent="Importar planilha de clientes";
+  $("mbody").innerHTML=
+    '<div class="alertbar" style="margin-bottom:12px">📋 <b>Jeito mais fácil:</b> abra a sua planilha no Excel, selecione as células (com a linha de título), copie (Ctrl+C) e <b>cole aqui embaixo</b> (Ctrl+V). Ou clique em "Escolher arquivo CSV".</div>'+
+    '<div class="inp"><label>Cole aqui os dados copiados do Excel</label><textarea id="impTxt" rows="6" placeholder="Cole aqui..." oninput="lerImport(this.value)"></textarea></div>'+
+    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImport\').click()">📁 …ou escolher arquivo CSV</button></div>'+
+    '<div id="impMap"></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" id="impGo" style="display:none" onclick="fazImport()">⬇ Importar</button>';
+  $("modal").classList.add("on");
+}
+$("fileImport").addEventListener("change",function(){var f=this.files[0];if(!f)return;
+  var r=new FileReader();r.onload=function(){$("impTxt").value=r.result;lerImport(r.result);};r.readAsText(f,"utf-8");this.value="";});
+function splitLinha(l,sep){ // split simples respeitando aspas
+  var out=[],cur="",q=false;
+  for(var i=0;i<l.length;i++){var ch=l[i];
+    if(ch==='"'){q=!q;continue;}
+    if(ch===sep&&!q){out.push(cur);cur="";}else cur+=ch;}
+  out.push(cur);return out.map(function(s){return s.trim();});
+}
+function lerImport(txt){
+  txt=(txt||"").replace(/\r/g,"");var linhas=txt.split("\n").filter(function(l){return l.trim();});
+  if(linhas.length<1){$("impMap").innerHTML="";$("impGo").style.display="none";return;}
+  var sep=linhas[0].indexOf("\t")>=0?"\t":(linhas[0].split(";").length>linhas[0].split(",").length?";":",");
+  var rows=linhas.map(function(l){return splitLinha(l,sep);});
+  var ncol=Math.max.apply(null,rows.map(function(r){return r.length;}));
+  rows=rows.map(function(r){while(r.length<ncol)r.push("");return r;});
+  IMP.headers=rows[0];IMP.rows=rows.slice(1);
+  if(!IMP.rows.length){IMP.rows=rows;IMP.headers=rows[0].map(function(_,i){return "Coluna "+(i+1);});}
+  var CAMPOS=[["ignorar","(ignorar)"],["nome","Nome / Razão social"],["doc","CNPJ / CPF"],["tel","Telefone"],["mail","E-mail"],
+    ["operadora","Operadora"],["mensalidade","Mensalidade R$"],["renovacao","Renovação (data)"],["status","Situação"],
+    ["placa","Placa"],["marca","Marca"],["modelo","Modelo"],["ano","Ano"],["fipe","FIPE R$"],["obs","Observações"]];
+  function adiv(hdr){var h=hdr.toLowerCase();
+    if(/raz|nome|cliente|coop/.test(h))return "nome";if(/cnpj|cpf|doc/.test(h))return "doc";
+    if(/fone|cel|whats|contato/.test(h))return "tel";if(/mail/.test(h))return "mail";
+    if(/oper|assoc|coop.*tiva|segurad/.test(h))return "operadora";if(/mensal|valor/.test(h))return "mensalidade";
+    if(/renov|venc/.test(h))return "renovacao";if(/situa|status|pagament/.test(h))return "status";
+    if(/placa/.test(h))return "placa";if(/marca/.test(h))return "marca";if(/modelo/.test(h))return "modelo";
+    if(/ano/.test(h))return "ano";if(/fipe/.test(h))return "fipe";if(/obs/.test(h))return "obs";return "ignorar";}
+  var mapa='<div class="section-title" style="margin:10px 0 8px"><span class="bar"></span>Diga o que é cada coluna <span class="hint">— eu já tentei adivinhar</span></div>'+
+    '<div class="scrollx"><table class="ed" style="min-width:520px"><thead><tr>'+
+    IMP.headers.map(function(hd,i){return '<th><select class="impSel" data-i="'+i+'" style="width:100%;padding:5px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:11.5px">'+
+      CAMPOS.map(function(cp){return '<option value="'+cp[0]+'"'+(adiv(hd)===cp[0]?" selected":"")+'>'+cp[1]+'</option>';}).join("")+'</select><div class="mini" style="margin-top:3px">'+esc(hd)+'</div></th>';}).join("")+
+    '</tr></thead><tbody>'+
+    IMP.rows.slice(0,4).map(function(r){return '<tr>'+r.map(function(cel){return '<td style="padding:6px;font-size:12px;color:#454c60">'+esc(cel)+'</td>';}).join("")+'</tr>';}).join("")+
+    '</tbody></table></div><div class="mini" style="margin-top:6px">Mostrando as 4 primeiras linhas · total a importar: <b>'+IMP.rows.length+'</b></div>';
+  $("impMap").innerHTML=mapa;$("impGo").style.display="inline-flex";
+}
+function fazImport(){
+  var mapa=[].map.call(document.querySelectorAll(".impSel"),function(s){return s.value;});
+  var novos=0,atualizados=0;
+  IMP.rows.forEach(function(r){
+    var o={},v={};
+    mapa.forEach(function(campo,i){if(campo==="ignorar")return;var val=(r[i]||"").trim();if(!val)return;
+      if(["placa","marca","modelo","ano","fipe"].indexOf(campo)>=0)v[campo]=val;else o[campo]=val;});
+    if(!o.nome)return;
+    var st="novo";var sl=(o.status||"").toLowerCase();
+    if(/inad/.test(sl))st="inadimplente";else if(/atras|venc|pend/.test(sl))st="atrasado";else if(/dia|ok|pago|ativ/.test(sl))st="emdia";else if(/inativ|cancel/.test(sl))st="inativo";
+    var cli={id:uid(),nome:o.nome,doc:o.doc||"",tel:o.tel||"",mail:o.mail||"",operadora:o.operadora||"",
+      mensalidade:num(o.mensalidade),renovacao:parseDataBR(o.renovacao)||"",status:st,obs:o.obs||"",
+      veiculos:(v.placa||v.modelo||v.marca||v.fipe)?[{marca:v.marca||"",modelo:v.modelo||"",ano:v.ano||"",placa:v.placa||"",fipe:v.fipe||""}]:[]};
+    var ja=DB.clientes.find(function(x){return (x.doc&&cli.doc&&x.doc.replace(/\D/g,"")===cli.doc.replace(/\D/g,""))||x.nome.toLowerCase()===cli.nome.toLowerCase();});
+    if(ja){ // atualiza sem apagar o que já existe
+      ["doc","tel","mail","operadora","obs"].forEach(function(k){if(cli[k])ja[k]=cli[k];});
+      if(cli.mensalidade!=null)ja.mensalidade=cli.mensalidade;
+      if(cli.renovacao)ja.renovacao=cli.renovacao;
+      if(o.status)ja.status=st;
+      cli.veiculos.forEach(function(nv){if(!(ja.veiculos||[]).some(function(x){return x.placa&&nv.placa&&x.placa===nv.placa;})){ja.veiculos=(ja.veiculos||[]);ja.veiculos.push(nv);}});
+      atualizados++;
+    }else{DB.clientes.push(cli);novos++;}
+  });
+  save();closeM();go("clientes");
+  toast("✅ Importação: "+novos+" cliente(s) novo(s)"+(atualizados?", "+atualizados+" atualizado(s)":"")+" — salvo!");
+}
+
+/* =================== PROPOSTAS =================== */
+var COBERTURAS_PADRAO=["Cobertura da Tabela FIPE","Valor do implemento","Franquia casco","Franquia semi-reboque / carroceria",
+  "Colisão, incêndio, roubo, furto, tombamento","Fenômenos da natureza","Incêndio de qualquer natureza","DM/DC compartilhado",
+  "Danos materiais","Danos corporais","Danos morais","APP Morte","APP Invalidez","Para-brisa / retrovisores",
+  "Farol / lanterna / demais vidros","Assistência 24h após sinistro","Destombamento","Assistência 24h pane","Forma de pagamento"];
+var OPS_SUGERIDAS=["PREVENIR TRUCK","COOPERVESC","COOP. TRANSPOSEG"];
+var P=null; // proposta em edição
+var propBad={rascunho:["b-mut","Rascunho"],enviada:["b-blue","Enviada"],fechada:["b-ok","Fechada"],recusada:["b-red","Recusada"]};
+
+var propFiltro="todas";
+function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;}
+PAGES.propostas=function(){
+  var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+    '<button class="btn primary" onclick="novaProposta(\'unico\')">➕ Nova proposta — 1 veículo</button>'+
+    '<button class="btn primary" onclick="novaProposta(\'frota\')">🚛 Nova proposta — Frota</button></div>';
+  if(!DB.propostas.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta ainda. Escolha o modelo acima: <b>1 veículo</b> (comum) ou <b>Frota</b> (a partir de 2 veículos). Você preenche uma vez, o sistema calcula as parcelas e gera o PDF comparativo com as operadoras lado a lado.</div>';
+  var unicos=DB.propostas.filter(function(p){return nvProp(p)<2;}).length;
+  var frotas=DB.propostas.length-unicos;
+  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+    [["todas","Todas",DB.propostas.length],["unico","1 veículo",unicos],["frota","Frota",frotas]].map(function(t){
+      return '<button class="fpre'+(propFiltro===t[0]?" on":"")+'" onclick="propFiltro=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
+  var lista=DB.propostas.filter(function(p){
+    if(propFiltro==="unico")return nvProp(p)<2;
+    if(propFiltro==="frota")return nvProp(p)>=2;
+    return true;});
+  if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
+  h+='<div class="tbl-wrap"><table><thead><tr><th>Nº</th><th>Cliente</th><th>Tipo</th><th>Operadoras</th><th>Data</th><th>Situação</th><th></th></tr></thead><tbody>'+
+    lista.slice().reverse().map(function(p){
+      var nv=nvProp(p);
+      return '<tr><td><b>'+esc(p.num)+'</b></td><td class="cli"><div class="av">'+ini(p.cliente.nome)+'</div>'+esc(p.cliente.nome||"—")+'</td>'+
+      '<td>'+(nv>=2?'<span class="fbadge frota">FROTA · '+nv+'</span>':'<span class="fbadge unico">1 VEÍCULO</span>')+'</td>'+
+      '<td>'+esc((p.ops||[]).map(function(o){return o.nome;}).filter(Boolean).join(", ")||"—")+'</td><td>'+fmtData(p.data)+'</td>'+
+      '<td><span class="badge '+propBad[p.status][0]+'">'+propBad[p.status][1]+'</span></td>'+
+      '<td><button class="act" onclick="abrirProposta(\''+p.id+'\')">Abrir</button>'+
+      '<button class="act" onclick="verDoc(\''+p.id+'\')">📄 PDF</button>'+
+      (p.status==="enviada"?'<button class="act g" onclick="marcaProp(\''+p.id+'\',\'fechada\')">Fechou!</button>':'')+
+      '<button class="act r" onclick="delProposta(\''+p.id+'\')">✕</button></td></tr>';}).join("")+
+    '</tbody></table></div>';
+  return h;
+};
+function marcaProp(id,st){var p=DB.propostas.find(function(x){return x.id===id;});p.status=st;save();go("propostas");
+  toast(st==="fechada"?"🎉 Proposta fechada — parabéns pela venda!":"Situação atualizada");}
+function delProposta(id){if(!confirm("Apagar esta proposta?"))return;
+  DB.propostas=DB.propostas.filter(function(x){return x.id!==id;});save();go("propostas");toast("Proposta apagada");}
+function veicVazio(){return {marca:"",ano:"",modelo:"",placa:"",chassi:"",fipe:"",impl:""};}
+function novaProposta(tipo){
+  P={id:uid(),num:String(new Date().getFullYear())+"-"+String(DB.seqProposta).padStart(3,"0"),data:hojeISO(),validadeDias:7,
+    status:"rascunho",cliente:{nome:"",doc:"",end:"",cep:"",carga:"",tel:""},
+    veics:(tipo==="frota")?[veicVazio(),veicVazio(),veicVazio()]:[veicVazio()],
+    cobs:COBERTURAS_PADRAO.slice(),
+    ops:OPS_SUGERIDAS.map(function(n){return {nome:n,vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false};}),
+    obs:""};
+  go("editProp");
+}
+function abrirProposta(id){P=JSON.parse(JSON.stringify(DB.propostas.find(function(x){return x.id===id;})));go("editProp");}
+PAGES.editProp=function(){
+  return '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn" onclick="go(\'propostas\')">← Propostas</button>'+
+    '<span class="fbadge unico" id="modoBadge">VEÍCULO ÚNICO</span><span style="flex:1"></span>'+
+    '<button class="btn" onclick="salvarProposta(false)">💾 Salvar rascunho</button>'+
+    '<button class="btn primary" onclick="salvarProposta(true)">📄 Salvar e gerar PDF</button></div>'+
+    '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Cliente</div>'+
+    '<div class="fr"><div class="inp"><label>Razão social / Nome</label><input id="pcNome" list="pcList" autocomplete="off" oninput="pegaCliente()"><datalist id="pcList">'+
+      DB.clientes.map(function(c){return '<option>'+esc(c.nome)+'</option>';}).join("")+'</datalist></div>'+
+    '<div class="inp"><label>CNPJ / CPF</label><input id="pcDoc"></div></div>'+
+    '<div class="fr3"><div class="inp"><label>Endereço</label><input id="pcEnd"></div><div class="inp"><label>CEP</label><input id="pcCep"></div>'+
+    '<div class="inp"><label>Tipo de carga</label><input id="pcCarga"></div></div></div>'+
+    '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Veículos '+
+    '<button class="btn sm" style="margin-left:auto" onclick="pAddVeic()">+ veículo</button></div>'+
+    '<div class="scrollx"><table class="ed" id="pvTable"><thead><tr><th style="width:30px">#</th><th>Marca</th><th style="width:64px">Ano</th><th>Modelo</th><th style="width:96px">Placa</th><th>Chassi</th><th style="width:104px">FIPE R$</th><th style="width:116px">Implemento R$</th><th style="width:26px"></th></tr></thead><tbody></tbody></table></div></div>'+
+    '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Operadoras '+
+    '<span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onclick="pAddOp()">+ operadora</button><button class="btn sm" onclick="pAddCob()">+ linha</button></span></div>'+
+    '<div class="scrollx"><div class="ops" id="pOpsGrid"></div></div>'+
+    '<div class="mini" style="margin-top:8px">💡 Preencha o <b>VALOR TOTAL (1x)</b> de cada operadora — as parcelas o sistema calcula sozinho. Marque ⭐ na melhor opção pra ela sair destacada no PDF.</div></div>'+
+    '<div class="card"><div class="section-title" style="margin-top:0"><span class="bar"></span>Condições</div>'+
+    '<div class="fr3"><div class="inp"><label>Validade (dias)</label><input id="pVal" type="number" min="1"></div>'+
+    '<div class="inp"><label>Nº da proposta</label><input id="pNum"></div>'+
+    '<div class="inp"><label>Data (dd/mm/aaaa)</label><input id="pData"></div></div>'+
+    '<div class="inp"><label>Observações</label><textarea id="pObs" rows="2" placeholder="Ex.: valores sujeitos a vistoria e análise cadastral."></textarea></div></div>'+
+    '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:flex-end;align-items:center">'+
+    '<span class="mini" style="margin-right:auto">Preencheu tudo? É só gerar aqui mesmo 👉</span>'+
+    '<button class="btn" onclick="salvarProposta(false)">💾 Salvar rascunho</button>'+
+    '<button class="btn primary" style="font-size:13.5px;padding:11px 18px" onclick="salvarProposta(true)">📄 Salvar e gerar PDF</button></div>';
+};
+function pegaCliente(){var n=$("pcNome").value;var c=DB.clientes.find(function(x){return x.nome===n;});if(!c)return;
+  $("pcDoc").value=c.doc||"";
+  if(c.veiculos&&c.veiculos.length&&!P.veics.some(function(v){return v.placa||v.modelo;})){
+    P.veics=c.veiculos.map(function(v){return {marca:v.marca||"",ano:v.ano||"",modelo:v.modelo||"",placa:v.placa||"",chassi:"",fipe:v.fipe||"",impl:""};});
+    pDrawVeics();toast("Veículos do cadastro do cliente preenchidos automaticamente");}
+  atualizaBadge();}
+function drawPropEditor(){
+  $("pcNome").value=P.cliente.nome;$("pcDoc").value=P.cliente.doc;$("pcEnd").value=P.cliente.end;
+  $("pcCep").value=P.cliente.cep;$("pcCarga").value=P.cliente.carga;
+  $("pVal").value=P.validadeDias;$("pNum").value=P.num;$("pData").value=fmtData(P.data);$("pObs").value=P.obs;
+  pDrawVeics();pDrawOps();atualizaBadge();
+}
+function pAddVeic(){P.veics.push({marca:"",ano:"",modelo:"",placa:"",chassi:"",fipe:"",impl:""});pDrawVeics();}
+function pDelVeic(i){P.veics.splice(i,1);if(!P.veics.length)pAddVeic();pDrawVeics();atualizaBadge();}
+function pDrawVeics(){
+  var tb=$("pvTable").tBodies[0];tb.innerHTML="";
+  P.veics.forEach(function(v,i){
+    var tr=document.createElement("tr");
+    tr.innerHTML='<td style="text-align:center;color:#98a0b0">'+(i+1)+'</td>'+
+      ["marca","ano","modelo","placa","chassi","fipe","impl"].map(function(k){
+        return '<td><input data-i="'+i+'" data-k="'+k+'" value="'+esc(v[k])+'"></td>';}).join("")+
+      '<td><button class="del" onclick="pDelVeic('+i+')">✕</button></td>';
+    tb.appendChild(tr);});
+  tb.querySelectorAll("input").forEach(function(inp){
+    inp.addEventListener("input",function(){P.veics[+inp.dataset.i][inp.dataset.k]=inp.value;atualizaBadge();});});
+}
+function atualizaBadge(){var nv=P.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;
+  var b=$("modoBadge");if(!b)return;b.textContent=nv>=2?("FROTA ("+nv+" veículos)"):"VEÍCULO ÚNICO";b.className="fbadge "+(nv>=2?"frota":"unico");}
+function pAddOp(){P.ops.push({nome:"",vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false});pDrawOps();}
+function pDelOp(i){P.ops.splice(i,1);if(!P.ops.length)pAddOp();pDrawOps();}
+function pAddCob(){var n=prompt("Nome da linha de cobertura:");if(n){P.cobs.push(n);pDrawOps();}}
+function pDelCob(i){P.cobs.splice(i,1);pDrawOps();}
+function pSetDest(oi,val){P.ops.forEach(function(o,i){o.destaque=(i===oi)&&val;});pDrawOps();}
+function pSetVal(oi,ci,val){var cb=P.cobs[ci];
+  P.ops[oi].vals[cb]=(String(P.ops[oi].vals[cb]||"").trim()===val)?"":val; /* clicar de novo desmarca */
+  pDrawOps();}
+function opTemDados(o){return Object.keys(o.vals||{}).some(function(k){return String(o.vals[k]||"").trim();});}
+function pCopiarDe(oi){
+  var fontes=P.ops.map(function(o,i){return {i:i,o:o};}).filter(function(x){return x.i!==oi&&opTemDados(x.o);});
+  if(!fontes.length){toast("⚠️ Preencha primeiro uma operadora — aí é só copiar dela");return;}
+  if(fontes.length===1){pDoCopy(oi,fontes[0].i);return;}
+  $("modalBox").className="modal";
+  $("mtitle").textContent="Copiar preenchimento";
+  $("mbody").innerHTML='<div class="mini" style="margin-bottom:10px">Copiar as coberturas de qual operadora para <b>'+esc(P.ops[oi].nome||"esta coluna")+'</b>?</div>'+
+    fontes.map(function(f){return '<button class="btn" style="width:100%;justify-content:flex-start;margin-bottom:8px" onclick="pDoCopy('+oi+','+f.i+');closeM()">📋 '+esc(f.o.nome||("Operadora "+(f.i+1)))+'</button>';}).join("");
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button>';
+  $("modal").classList.add("on");
+}
+function pDoCopy(oi,src){
+  P.ops[oi].vals=JSON.parse(JSON.stringify(P.ops[src].vals||{}));
+  pDrawOps();
+  toast("📋 Coberturas copiadas de "+(P.ops[src].nome||"outra operadora")+" — agora é só ajustar o que for diferente");
+}
+function pCell(html,cls){var d=document.createElement("div");if(cls)d.className=cls;d.innerHTML=html;return d;}
+function pDrawOps(){
+  var g=$("pOpsGrid");if(!g)return;g.style.setProperty("--nop",P.ops.length);g.innerHTML="";
+  g.appendChild(pCell('<span class="rowlab">OPERADORA</span>',"ophd"));
+  P.ops.forEach(function(op,oi){
+    var d=pCell("","ophd");
+    d.innerHTML='<input placeholder="Nome" value="'+esc(op.nome)+'" oninput="P.ops['+oi+'].nome=this.value">'+
+      '<div class="chk"><label style="cursor:pointer" title="Destacar como recomendada no PDF"><input type="checkbox" style="width:auto" '+(op.destaque?"checked":"")+' onchange="pSetDest('+oi+',this.checked)"> ⭐</label>'+
+      '<button class="cpy" title="Copiar as coberturas de outra operadora já preenchida" onclick="pCopiarDe('+oi+')">⧉ copiar</button>'+
+      '<button class="del" onclick="pDelOp('+oi+')">✕</button></div>';
+    g.appendChild(d);});
+  P.cobs.forEach(function(cb,ci){
+    g.appendChild(pCell('<span class="rowlab">'+esc(cb)+'</span> <button class="del" style="font-size:10px" onclick="pDelCob('+ci+')">✕</button>'));
+    P.ops.forEach(function(op,oi){
+      var d=pCell("","cyn");
+      var v=String(op.vals[cb]||"").trim(),lv=v.toLowerCase();
+      var isSim=lv==="sim",isNao=(lv==="não"||lv==="nao");
+      d.innerHTML='<button class="yn s'+(isSim?" on":"")+'" title="Sim" onclick="pSetVal('+oi+','+ci+',\'Sim\')">✓</button>'+
+        '<button class="yn n'+(isNao?" on":"")+'" title="Não" onclick="pSetVal('+oi+','+ci+',\'Não\')">✗</button>'+
+        '<input value="'+esc(isSim||isNao?"":v)+'" placeholder="ou valor…" oninput="P.ops['+oi+'].vals['+JSON.stringify(cb).replace(/"/g,"&quot;")+']=this.value;var bs=this.parentNode.querySelectorAll(\'.yn\');bs[0].classList.remove(\'on\');bs[1].classList.remove(\'on\')">';
+      g.appendChild(d);});});
+  [["total","VALOR TOTAL (1x) R$"],["entrada","Entrada (se houver) R$"],["maxParc","Parcela em até (x)"],["nota","Observação"]].forEach(function(par){
+    var k=par[0];
+    g.appendChild(pCell('<span class="rowlab" style="color:var(--navy);font-weight:700">'+par[1]+'</span>'));
+    P.ops.forEach(function(op,oi){
+      var d=pCell("");
+      d.innerHTML='<input value="'+esc(op[k])+'" oninput="P.ops['+oi+']['+JSON.stringify(k)+']=this.value">';
+      g.appendChild(d);});});
+}
+function colheProposta(){
+  P.cliente={nome:$("pcNome").value.trim(),doc:$("pcDoc").value.trim(),end:$("pcEnd").value.trim(),cep:$("pcCep").value.trim(),carga:$("pcCarga").value.trim()};
+  P.validadeDias=parseInt($("pVal").value)||7;P.num=$("pNum").value.trim();
+  P.data=parseDataBR($("pData").value)||hojeISO();P.obs=$("pObs").value.trim();
+  var v=new Date(P.data+"T00:00:00");v.setDate(v.getDate()+P.validadeDias);
+  P.validadeAte=v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0")+"-"+String(v.getDate()).padStart(2,"0");
+}
+function salvarProposta(gerar){
+  colheProposta();
+  if(!P.cliente.nome){toast("⚠️ Preencha o nome do cliente");return;}
+  var i=DB.propostas.findIndex(function(x){return x.id===P.id;});
+  if(i<0){DB.seqProposta++;DB.propostas.push(JSON.parse(JSON.stringify(P)));}
+  else DB.propostas[i]=JSON.parse(JSON.stringify(P));
+  save();
+  if(gerar){renderDoc(P);$("propOverlay").classList.add("on");}
+  else{toast("💾 Proposta salva");go("propostas");}
+}
+function verDoc(id){var p=DB.propostas.find(function(x){return x.id===id;});renderDoc(p);$("propOverlay").classList.add("on");}
+function fecharDoc(){ $("propOverlay").classList.remove("on"); if(P&&document.querySelector(".nav a.active")&&document.querySelector(".nav a.active").dataset.p!=="propostas")go("propostas"); }
+
+/* ====== documento (o PDF que o cliente recebe) ====== */
+function fmtVal(v){
+  if(v==null||v==="")return '<span class="no">—</span>';
+  var s=String(v).trim(),l=s.toLowerCase();
+  if(l==="sim")return '<span class="yes">✓ Sim</span>';
+  if(l==="não"||l==="nao")return '<span class="no">✗ Não</span>';
+  var n=num(s);
+  if(n!=null&&String(s).replace(/[\d.,\s%]/g,"")===""){
+    if(/%$/.test(s))return esc(s);
+    if(n<1&&n>0)return (n*100).toLocaleString("pt-BR")+"%";
+    if(n>=1000)return brl(n);}
+  return esc(s);
+}
+function renderDoc(p){
+  var co=DB.corretora;var coNome=co.nome||"Sua Corretora";
+  var lg=ini(coNome);
+  var nvList=p.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;});
+  var frota=nvList.length>=2;
+  var h='<div class="po-doc"><div class="po-bar">'+
+    '<span style="margin-right:auto;align-self:center;font-size:12px;color:#6b7386">Confira e depois imprima — na janela de impressão escolha <b>Salvar como PDF</b></span>'+
+    '<button class="btn" onclick="fecharDoc()">Fechar</button>'+
+    '<button class="btn primary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>';
+  h+='<div class="dochead"><div class="lg">'+esc(lg)+'</div>'+
+    '<div><div class="t1">'+esc(coNome)+'</div><div class="t2">Proposta de Proteção Veicular'+(frota?' — Frota':'')+'</div></div>'+
+    '<div class="meta">'+(p.num?('Proposta <b>Nº '+esc(p.num)+'</b><br>'):'')+'Data: <b>'+fmtData(p.data)+'</b><br>Validade: <b>'+p.validadeDias+' dias</b></div></div>';
+  h+='<div class="dsec"><h3>Dados do cliente</h3><div class="kv">'+
+    kvi("Razão social / Nome",p.cliente.nome)+kvi("CNPJ / CPF",p.cliente.doc)+
+    kvi("Endereço",p.cliente.end)+kvi("CEP",p.cliente.cep)+kvi("Tipo de carga",p.cliente.carga)+'</div></div>';
+  var somaF=0,somaI=0;
+  var rows=nvList.map(function(v,i){var f=num(v.fipe),im=num(v.impl);if(f)somaF+=f;if(im)somaI+=im;
+    return '<tr><td>'+(i+1)+'</td><td>'+esc(v.marca)+'</td><td>'+esc(v.ano)+'</td><td>'+esc(v.modelo)+'</td><td>'+esc(v.placa)+'</td><td>'+esc(v.chassi)+'</td>'+
+    '<td class="r">'+(f?brl(f):"—")+'</td><td class="r">'+(im?brl(im):"—")+'</td></tr>';}).join("");
+  h+='<div class="dsec"><h3>Relação de veículos <span class="bdg fbadge '+(frota?'frota':'unico')+'">'+(frota?('FROTA · '+nvList.length+' VEÍCULOS'):'VEÍCULO ÚNICO')+'</span></h3>'+
+    '<div class="scrollx"><table class="dt"><thead><tr><th>#</th><th>Marca</th><th>Ano</th><th>Modelo</th><th>Placa</th><th>Chassi</th><th style="text-align:right">FIPE 100%</th><th style="text-align:right">Implemento</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="8" style="color:#98a0b0">—</td></tr>')+'</tbody>'+
+    ((somaF||somaI)?('<tfoot><tr><td colspan="6">Valor total protegido</td><td class="r">'+(somaF?brl(somaF):"—")+'</td><td class="r">'+(somaI?brl(somaI):"—")+'</td></tr></tfoot>'):'')+'</table></div></div>';
+  var ops=p.ops.filter(function(o){return o.nome||o.total;});
+  if(ops.length){
+    h+='<div class="dsec"><h3>Comparativo das opções</h3><div class="scrollx"><table class="cmp"><thead><tr><th>Cobertura</th>'+
+      ops.map(function(o){return '<th'+(o.destaque?' class="hi"':'')+'>'+esc(o.nome||"—")+(o.destaque?'<span class="star">RECOMENDADA</span>':'')+'</th>';}).join("")+'</tr></thead><tbody>'+
+      p.cobs.map(function(cb){return '<tr><td class="lab">'+esc(cb)+'</td>'+ops.map(function(o){return '<td class="val'+(o.destaque?' hi':'')+'">'+fmtVal(o.vals[cb])+'</td>';}).join("")+'</tr>';}).join("")+
+      '</tbody></table></div></div>';
+    var maxN=Math.max.apply(null,ops.map(function(o){return Math.min(Math.max(parseInt(o.maxParc)||12,1),12);}));
+    var pay='<tr class="tot"><td>À vista (1x)</td>'+ops.map(function(o){var t=num(o.total);return '<td'+(o.destaque?' class="hi"':'')+'>'+(t?brl(t):"—")+'</td>';}).join("")+'</tr>';
+    for(var n=2;n<=maxN;n++){
+      pay+='<tr><td>'+n+'x</td>'+ops.map(function(o){
+        var t=num(o.total),e=num(o.entrada),mx=Math.min(Math.max(parseInt(o.maxParc)||12,1),12);
+        if(!t||n>mx)return '<td'+(o.destaque?' class="hi"':'')+'>—</td>';
+        if(e){var pc=(t-e)/(n-1);return '<td'+(o.destaque?' class="hi"':'')+'>entrada '+brl(e)+' + '+(n-1)+'x '+brl(Math.round(pc*100)/100)+'</td>';}
+        return '<td'+(o.destaque?' class="hi"':'')+'>'+n+'x '+brl(Math.round(t/n*100)/100)+'</td>';}).join("")+'</tr>';}
+    var notas=ops.filter(function(o){return o.nota;}).map(function(o){return '<b>'+esc(o.nome)+':</b> '+esc(o.nota);}).join(" · ");
+    h+='<div class="dsec"><h3>Investimento e formas de pagamento</h3><div class="scrollx"><table class="pay"><thead><tr><th>Parcelamento</th>'+
+      ops.map(function(o){return '<th'+(o.destaque?' class="hi"':'')+'>'+esc(o.nome||"—")+'</th>';}).join("")+'</tr></thead><tbody>'+pay+'</tbody></table></div>'+
+      (notas?'<div class="paynote">'+notas+'</div>':'')+
+      '<div class="paynote">Pagamento por boleto. Parcelas calculadas sem juros sobre o valor total.</div></div>';
+  }
+  if(p.obs)h+='<div class="dsec"><h3>Observações</h3><div class="obsbox">'+esc(p.obs)+'</div></div>';
+  h+='<div class="dsec"><div class="validity">⏳ Esta proposta é válida por <b>'+p.validadeDias+' dias</b> a partir da data de emissão. Valores sujeitos a análise cadastral e vistoria do veículo.</div></div>';
+  h+='<div class="docfoot"><div><b>'+esc(coNome)+'</b>'+(co.cnpj?' · CNPJ '+esc(co.cnpj):'')+'</div><div>'+
+    [co.tel?("📞 "+esc(co.tel)):null,co.mail?("✉️ "+esc(co.mail)):null].filter(Boolean).join(" · ")+'</div></div></div>';
+  $("propOverlay").innerHTML=h;
+}
+function kvi(k,v){return '<div class="it"><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>';}
+
+/* =================== PROBLEMAS / SINISTROS =================== */
+var probBad={aberto:["b-wait","Aberto"],andamento:["b-blue","Em andamento"],resolvido:["b-ok","Resolvido"],negado:["b-red","Negado"]};
+PAGES.problemas=function(){
+  var h='<div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap"><button class="btn primary" onclick="novoProblema()">🚨 Registrar problema</button></div>'+
+    '<div class="mini" style="margin-bottom:14px">Registre aqui <b>todo aviso de cliente</b> (batida, roubo, vidro, dúvida de cobertura). O sistema avisa no Início quando um problema fica <b>5 dias sem movimento</b> — pra ninguém perder prazo nem causa.</div>';
+  if(!DB.problemas.length)return h+'<div class="card" style="color:var(--muted)">Nenhum problema registrado.</div>';
+  h+='<div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Placa</th><th>Tipo</th><th>Aberto em</th><th>Último movimento</th><th>Situação</th><th></th></tr></thead><tbody>'+
+    DB.problemas.slice().reverse().map(function(pr){
+      var dm=diasDesde(pr.ultAtual||pr.data);
+      var parado=(pr.status!=="resolvido"&&pr.status!=="negado"&&dm>=5);
+      return '<tr'+(parado?' style="background:#fdf3f2"':'')+'><td class="cli"><div class="av">'+ini(pr.cliente)+'</div>'+esc(pr.cliente)+'</td>'+
+      '<td>'+esc(pr.placa||"—")+'</td><td>'+esc(pr.tipo)+'</td><td>'+fmtData(pr.data)+'</td>'+
+      '<td>'+fmtData(pr.ultAtual||pr.data)+(parado?' <span class="badge b-red">parado '+dm+'d</span>':'')+'</td>'+
+      '<td><span class="badge '+probBad[pr.status][0]+'">'+probBad[pr.status][1]+'</span></td>'+
+      '<td><button class="act" onclick="abrirProblema(\''+pr.id+'\')">Abrir</button></td></tr>';}).join("")+
+    '</tbody></table></div>';
+  return h;
+};
+function novoProblema(){
+  $("modalBox").className="modal";
+  $("mtitle").textContent="Registrar problema / sinistro";
+  $("mbody").innerHTML=
+    '<div class="inp" style="margin-bottom:11px"><label>Cliente</label><input id="prCli" list="prList" autocomplete="off"><datalist id="prList">'+
+      DB.clientes.map(function(c){return '<option>'+esc(c.nome)+'</option>';}).join("")+'</datalist></div>'+
+    '<div class="fr"><div class="inp"><label>Placa</label><input id="prPlaca"></div>'+
+    '<div class="inp"><label>Tipo</label><select id="prTipo"><option>Colisão</option><option>Roubo / Furto</option><option>Vidro / Para-brisa</option><option>Fenômeno da natureza</option><option>Pane / Guincho</option><option>Dúvida / Outro</option></select></div></div>'+
+    '<div class="inp"><label>O que aconteceu</label><textarea id="prDesc" rows="3" placeholder="Descreva o ocorrido..."></textarea></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" onclick="saveProblema()">🚨 Registrar</button>';
+  $("modal").classList.add("on");
+}
+function saveProblema(){
+  var cli=$("prCli").value.trim();if(!cli){toast("⚠️ Informe o cliente");return;}
+  DB.problemas.push({id:uid(),cliente:cli,placa:$("prPlaca").value.trim(),tipo:$("prTipo").value,
+    data:hojeISO(),ultAtual:hojeISO(),status:"aberto",updates:[{data:hojeISO(),txt:$("prDesc").value.trim()||"Problema registrado."}]});
+  save();closeM();go("problemas");toast("🚨 Registrado — protocolo #"+DB.problemas.length);
+}
+function abrirProblema(id){
+  var pr=DB.problemas.find(function(x){return x.id===id;});if(!pr)return;
+  $("modalBox").className="modal wide";
+  $("mtitle").textContent=pr.tipo+" — "+pr.cliente;
+  $("mbody").innerHTML=
+    '<div class="fr"><div class="inp"><label>Situação</label><select id="puSt">'+
+      Object.keys(probBad).map(function(k){return '<option value="'+k+'"'+(pr.status===k?" selected":"")+'>'+probBad[k][1]+'</option>';}).join("")+'</select></div>'+
+    '<div class="inp"><label>Placa</label><input id="puPlaca" value="'+esc(pr.placa||"")+'"></div></div>'+
+    '<div class="section-title" style="margin:10px 0 8px"><span class="bar"></span>Andamento</div>'+
+    '<div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fafbfe;margin-bottom:11px">'+
+      pr.updates.map(function(u){return '<div style="padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px"><b style="color:var(--muted);font-size:11px">'+fmtData(u.data)+'</b><br>'+esc(u.txt)+'</div>';}).join("")+'</div>'+
+    '<div class="inp"><label>Novo andamento (o que aconteceu agora)</label><textarea id="puTxt" rows="2" placeholder="Ex.: operadora pediu mais fotos; cliente avisado."></textarea></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Fechar</button><button class="btn primary" onclick="saveAndamento(\''+id+'\')">💾 Salvar andamento</button>';
+  $("modal").classList.add("on");
+}
+function saveAndamento(id){
+  var pr=DB.problemas.find(function(x){return x.id===id;});
+  var txt=$("puTxt").value.trim();
+  pr.status=$("puSt").value;pr.placa=$("puPlaca").value.trim();
+  if(txt){pr.updates.push({data:hojeISO(),txt:txt});pr.ultAtual=hojeISO();}
+  save();closeM();go("problemas");toast("✅ Andamento salvo"+(pr.status==="resolvido"?" — problema resolvido!":""));
+}
+
+/* =================== FINANCEIRO =================== */
+var finTipos={entrada:["b-ok","Entrada"],saida:["b-red","Saída"],comissao:["b-blue","Comissão"]};
+PAGES.fin=function(){
+  var mes=hojeISO().slice(0,7);
+  var doMes=DB.fin.filter(function(l){return (l.data||"").slice(0,7)===mes;});
+  var ent=doMes.filter(function(l){return l.tipo==="entrada";}).reduce(function(a,l){return a+l.valor;},0);
+  var sai=doMes.filter(function(l){return l.tipo==="saida";}).reduce(function(a,l){return a+l.valor;},0);
+  var com=doMes.filter(function(l){return l.tipo==="comissao";}).reduce(function(a,l){return a+l.valor;},0);
+  var h='<div class="grid kpis">'+
+    '<div class="kpi dark"><div class="lbl">✅ Entradas do mês</div><div class="val">'+brl0(ent)+'</div><div class="foot">'+fmtMes(mes)+'</div></div>'+
+    '<div class="kpi"><div class="lbl">🏆 Comissões do mês</div><div class="val">'+brl0(com)+'</div><div class="foot">recebidas das operadoras</div></div>'+
+    '<div class="kpi"><div class="lbl">📤 Saídas do mês</div><div class="val">'+brl0(sai)+'</div><div class="foot">despesas</div></div>'+
+    '<div class="kpi"><div class="lbl">💰 Resultado</div><div class="val '+((ent+com-sai)>=0?"pos":"neg")+'">'+brl0(ent+com-sai)+'</div><div class="foot">entradas + comissões − saídas</div></div></div>'+
+    '<div style="display:flex;gap:10px;margin:18px 0 8px;flex-wrap:wrap"><button class="btn primary" onclick="novoLanc()">➕ Novo lançamento</button>'+
+    '<button class="btn" onclick="abrirImportFin()">⬆ Importar planilha (histórico)</button></div>';
+  if(!DB.fin.length)return h+'<div class="card" style="color:var(--muted)">Nenhum lançamento ainda. Registre aqui <b>tudo que entra e sai</b> — mensalidades recebidas, comissões das operadoras e despesas.</div>';
+  h+='<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="r">Valor</th><th></th></tr></thead><tbody>'+
+    DB.fin.slice().sort(function(a,b){return b.data<a.data?-1:1;}).map(function(l){
+      return '<tr><td>'+fmtData(l.data)+'</td><td>'+esc(l.desc)+'</td><td><span class="badge '+finTipos[l.tipo][0]+'">'+finTipos[l.tipo][1]+'</span></td>'+
+      '<td class="r '+(l.tipo==="saida"?"neg":"pos")+'">'+(l.tipo==="saida"?"− ":"+ ")+brl(l.valor)+'</td>'+
+      '<td><button class="act r" onclick="delLanc(\''+l.id+'\')">✕</button></td></tr>';}).join("")+
+    '</tbody></table></div>';
+  return h;
+};
+function fmtMes(m){var p=m.split("-");var nomes=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];return nomes[parseInt(p[1])-1]+"/"+p[0];}
+function novoLanc(){
+  $("modalBox").className="modal";
+  $("mtitle").textContent="Novo lançamento";
+  $("mbody").innerHTML=
+    '<div class="fr"><div class="inp"><label>Tipo</label><select id="lTipo"><option value="entrada">Entrada (recebi)</option><option value="comissao">Comissão de operadora</option><option value="saida">Saída (paguei)</option></select></div>'+
+    '<div class="inp"><label>Valor (R$)</label><input id="lVal" placeholder="0,00"></div></div>'+
+    '<div class="fr"><div class="inp"><label>Data (dd/mm/aaaa)</label><input id="lData" value="'+fmtData(hojeISO())+'"></div>'+
+    '<div class="inp"><label>Descrição</label><input id="lDesc" placeholder="Ex.: mensalidade João / comissão Prevenir agosto"></div></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" onclick="saveLanc()">💾 Lançar</button>';
+  $("modal").classList.add("on");
+}
+function saveLanc(){
+  var v=num($("lVal").value);if(!v){toast("⚠️ Informe o valor");return;}
+  DB.fin.push({id:uid(),tipo:$("lTipo").value,valor:v,data:parseDataBR($("lData").value)||hojeISO(),desc:$("lDesc").value.trim()||"(sem descrição)"});
+  save();closeM();go("fin");toast("✅ Lançado e salvo");
+}
+function delLanc(id){if(!confirm("Apagar este lançamento?"))return;
+  DB.fin=DB.fin.filter(function(x){return x.id!==id;});save();go("fin");toast("Lançamento apagado");}
+
+/* ====== IMPORTAÇÃO DO HISTÓRICO FINANCEIRO (colar do Excel ou CSV) ====== */
+var IMPF={rows:[],headers:[]};
+function abrirImportFin(){
+  $("modalBox").className="modal wide";
+  $("mtitle").textContent="Importar histórico financeiro";
+  $("mbody").innerHTML=
+    '<div class="alertbar" style="margin-bottom:12px">📋 Traga o seu controle antigo: abra a planilha no Excel, selecione as células (com a linha de título), copie (Ctrl+C) e <b>cole aqui embaixo</b>. Precisa ter pelo menos <b>uma coluna de DATA e uma de VALOR</b> — é a data que faz o filtro por mês funcionar.</div>'+
+    '<div class="inp"><label>Cole aqui os dados copiados do Excel</label><textarea id="impfTxt" rows="6" placeholder="Cole aqui..." oninput="lerImportFin(this.value)"></textarea></div>'+
+    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImportFin\').click()">📁 …ou escolher arquivo CSV</button></div>'+
+    '<div id="impfMap"></div>';
+  $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" id="impfGo" style="display:none" onclick="fazImportFin()">⬇ Importar</button>';
+  $("modal").classList.add("on");
+}
+function lerImportFin(txt){
+  txt=(txt||"").replace(/\r/g,"");var linhas=txt.split("\n").filter(function(l){return l.trim();});
+  if(linhas.length<1){$("impfMap").innerHTML="";$("impfGo").style.display="none";return;}
+  var sep=linhas[0].indexOf("\t")>=0?"\t":(linhas[0].split(";").length>linhas[0].split(",").length?";":",");
+  var rows=linhas.map(function(l){return splitLinha(l,sep);});
+  var ncol=Math.max.apply(null,rows.map(function(r){return r.length;}));
+  rows=rows.map(function(r){while(r.length<ncol)r.push("");return r;});
+  IMPF.headers=rows[0];IMPF.rows=rows.slice(1);
+  if(!IMPF.rows.length){IMPF.rows=rows;IMPF.headers=rows[0].map(function(_,i){return "Coluna "+(i+1);});}
+  var CAMPOS=[["ignorar","(ignorar)"],["data","Data"],["desc","Descrição"],["cliente","Cliente"],["tipo","Tipo (entrada/saída/comissão)"],["valor","Valor R$"]];
+  function adiv(hd){var h=hd.toLowerCase();
+    if(/dat|venc|dia|m[eê]s/.test(h))return "data";
+    if(/desc|hist|lan[cç]|refer|item/.test(h))return "desc";
+    if(/client|coop|nome|raz/.test(h))return "cliente";
+    if(/tipo|natur|entrada|sa[ií]da|d\s*\/\s*c|movim/.test(h))return "tipo";
+    if(/valor|r\$|total|quantia/.test(h))return "valor";return "ignorar";}
+  $("impfMap").innerHTML='<div class="section-title" style="margin:10px 0 8px"><span class="bar"></span>Diga o que é cada coluna <span class="hint">— eu já tentei adivinhar</span></div>'+
+    '<div class="scrollx"><table class="ed" style="min-width:520px"><thead><tr>'+
+    IMPF.headers.map(function(hd,i){return '<th><select class="impfSel" data-i="'+i+'" style="width:100%;padding:5px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:11.5px">'+
+      CAMPOS.map(function(cp){return '<option value="'+cp[0]+'"'+(adiv(hd)===cp[0]?" selected":"")+'>'+cp[1]+'</option>';}).join("")+'</select><div class="mini" style="margin-top:3px">'+esc(hd)+'</div></th>';}).join("")+
+    '</tr></thead><tbody>'+
+    IMPF.rows.slice(0,4).map(function(r){return '<tr>'+r.map(function(cel){return '<td style="padding:6px;font-size:12px;color:#454c60">'+esc(cel)+'</td>';}).join("")+'</tr>';}).join("")+
+    '</tbody></table></div><div class="mini" style="margin-top:6px">Mostrando as 4 primeiras linhas · total a importar: <b>'+IMPF.rows.length+'</b></div>';
+  $("impfGo").style.display="inline-flex";
+}
+function fazImportFin(){
+  var mapa=[].map.call(document.querySelectorAll(".impfSel"),function(s){return s.value;});
+  var novos=0,pulados=0,semData=0;
+  IMPF.rows.forEach(function(r){
+    var o={};
+    mapa.forEach(function(campo,i){if(campo==="ignorar")return;var val=(r[i]||"").trim();if(!val)return;o[campo]=val;});
+    var data=parseDataBR(o.data);
+    var valor=num(o.valor);
+    if(valor==null){pulados++;return;}
+    if(!data){semData++;return;}
+    var tipo;
+    var tl=(o.tipo||"").toLowerCase();
+    if(/comiss/.test(tl))tipo="comissao";
+    else if(/sa[ií]|desp|pag|d[eé]b/.test(tl))tipo="saida";
+    else if(/entr|rec|cr[eé]d/.test(tl))tipo="entrada";
+    else tipo=valor<0?"saida":"entrada";
+    var desc=[o.desc,o.cliente].filter(Boolean).join(" — ")||"(importado)";
+    var abs=Math.abs(valor);
+    var ja=DB.fin.some(function(l){return l.data===data&&l.valor===abs&&l.desc===desc&&l.tipo===tipo;});
+    if(ja){pulados++;return;}
+    DB.fin.push({id:uid(),tipo:tipo,valor:abs,data:data,desc:desc});
+    novos++;
+  });
+  save();closeM();go("fin");
+  toast("✅ Histórico: "+novos+" lançamento(s) importado(s)"+(pulados?", "+pulados+" repetido(s)/sem valor pulado(s)":"")+(semData?", "+semData+" sem data (não entram no filtro — corrija a coluna de data)":""));
+}
+$("fileImportFin").addEventListener("change",function(){var f=this.files[0];if(!f)return;
+  var r=new FileReader();r.onload=function(){$("impfTxt").value=r.result;lerImportFin(r.result);};r.readAsText(f,"utf-8");this.value="";});
+
+/* =================== CONFIG =================== */
+PAGES.config=function(){
+  var c=DB.corretora;
+  return '<div class="card" style="margin-bottom:14px"><h3>🏢 Dados da corretora</h3><div class="csub">Aparecem no cabeçalho e no rodapé das propostas.</div>'+
+    '<div class="fr"><div class="inp"><label>Nome da corretora</label><input id="cfNome" value="'+esc(c.nome)+'"></div>'+
+    '<div class="inp"><label>CNPJ</label><input id="cfCnpj" value="'+esc(c.cnpj)+'"></div></div>'+
+    '<div class="fr"><div class="inp"><label>Telefone / WhatsApp</label><input id="cfTel" value="'+esc(c.tel)+'"></div>'+
+    '<div class="inp"><label>E-mail</label><input id="cfMail" value="'+esc(c.mail)+'"></div></div>'+
+    '<button class="btn primary" onclick="saveConfig()">💾 Salvar dados</button></div>'+
+    '<div class="card"><h3>💾 Backup — muito importante</h3>'+
+    '<div class="csub">Seus dados ficam gravados <b>neste computador</b>. O backup gera um arquivo com tudo (clientes, propostas, problemas, financeiro). Guarde numa pasta sua ou num pen drive. Se trocar de computador ou der problema, é ele que salva o seu negócio.</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+    '<button class="btn primary" onclick="backupJSON()">💾 Salvar backup agora</button>'+
+    '<button class="btn" onclick="$(\'fileRestore\').click()">📂 Restaurar de um backup</button></div>'+
+    '<div class="mini" style="margin-top:10px">Último backup: <b>'+(DB.ultimoBackup?fmtData(DB.ultimoBackup):"nunca")+'</b></div></div>'+
+    '<div class="card" style="margin-top:14px"><h3>🧹 Recomeçar do zero</h3><div class="csub">Apaga TODOS os dados deste aparelho (clientes, propostas, problemas, financeiro). Use pra tirar os dados de demonstração antes de começar a usar de verdade. Faça um backup antes se tiver algo seu.</div>'+
+    '<button class="btn danger" onclick="apagarTudo()">🧹 Apagar todos os dados</button></div>';
+};
+function apagarTudo(){
+  if(!confirm("Apagar TODOS os dados do sistema neste aparelho?\nIsso não tem volta (a não ser por um backup)."))return;
+  localStorage.removeItem(DBKEY);DB=dbDefault();save();go("inicio");toast("🧹 Sistema zerado — pronto pra começar do zero");
+}
+function saveConfig(){
+  DB.corretora={nome:$("cfNome").value.trim(),cnpj:$("cfCnpj").value.trim(),tel:$("cfTel").value.trim(),mail:$("cfMail").value.trim()};
+  save();toast("✅ Dados da corretora salvos");refreshCounts();
+}
+
+/* =================== AUTO-TESTE (?selftest) =================== */
+function selftest(){
+  var R=[];function T(nome,cond){R.push((cond?"PASS":"FAIL")+" :: "+nome);}
+  try{
+    T("num pt-BR",num("10.940,52")===10940.52);
+    T("num inteiro",num("98610")===98610);
+    T("num com R$",num("R$ 1.989,86")===1989.86);
+    T("num milhar sem centavos",num("98.610")===98610);
+    T("num milhão",num("1.234.567")===1234567);
+    T("brl",brl(5470.26)==="R$ "+(5470.26).toLocaleString("pt-BR",{minimumFractionDigits:2}));
+    T("parseDataBR",parseDataBR("05/09/2026")==="2026-09-05");
+    T("fmtData",fmtData("2026-09-05")==="05/09/2026");
+    // clientes
+    DB=dbDefault();
+    DB.clientes.push({id:"c1",nome:"Teste Transportes",doc:"11.222.333/0001-44",tel:"11 9999",operadora:"Prevenir",mensalidade:1500,renovacao:hojeISO(),status:"inadimplente",obs:"",veiculos:[{marca:"Volvo",modelo:"FH",ano:"2010",placa:"ABC-1234",fipe:"163195"}]});
+    T("alerta renovacao",alertas().some(function(a){return a.txt.indexOf("renova")>=0;}));
+    T("alerta inadimplente",alertas().some(function(a){return a.txt.indexOf("atrasado ou inadimplente")>=0;}));
+    // import
+    IMP.headers=["Nome","CNPJ","Telefone","Placa","Situação"];
+    IMP.rows=[["Nova Cargas","55.666.777/0001-88","11 8888","XYZ-9876","inadimplente"],["Teste Transportes","11.222.333/0001-44","11 7777","DEF-5678",""]];
+    var mapaFake=["nome","doc","tel","placa","status"];
+    var selHtml=mapaFake.map(function(m,i){return '<select class="impSel" data-i="'+i+'"><option value="'+m+'" selected>x</option></select>';}).join("");
+    var tmp=document.createElement("div");tmp.innerHTML=selHtml;document.body.appendChild(tmp);
+    fazImport();document.body.removeChild(tmp);
+    T("import: novo cliente",DB.clientes.some(function(c){return c.nome==="Nova Cargas"&&c.status==="inadimplente";}));
+    var tt=DB.clientes.find(function(c){return c.nome==="Teste Transportes";});
+    T("import: atualizou sem duplicar",DB.clientes.filter(function(c){return c.nome==="Teste Transportes";}).length===1);
+    T("import: veiculo somado",tt.veiculos.length===2);
+    // proposta parcelas
+    var p={id:"p1",num:"2026-001",data:hojeISO(),validadeDias:7,status:"rascunho",obs:"",
+      cliente:{nome:"TR GIMENEZ",doc:"",end:"",cep:"",carga:""},
+      veics:[{marca:"MB",ano:"2004",modelo:"1318",placa:"BXF-6776",chassi:"",fipe:"98610",impl:"50000"}],
+      cobs:["Danos morais"],
+      ops:[{nome:"PREVENIR",vals:{"Danos morais":"60000"},total:"10940,52",entrada:"",maxParc:12,nota:"",destaque:false},
+           {nome:"COOPERVESC",vals:{"Danos morais":"50000"},total:"12828,75",entrada:"",maxParc:11,nota:"",destaque:true},
+           {nome:"TRANSPOSEG",vals:{"Danos morais":"30000"},total:"65197,84",entrada:"6177,67",maxParc:12,nota:"",destaque:false}]};
+    renderDoc(p);
+    var doc=$("propOverlay").innerHTML;
+    T("doc: 12x prevenir 911,71",doc.indexOf("911,71")>=0);
+    T("doc: 11x coopervesc 1.166,25",doc.indexOf("1.166,25")>=0);
+    T("doc: coopervesc sem 12x",/12x<\/td><td[^>]*>12x[^<]*<\/td><td[^>]*>—<\/td>/.test(doc));
+    T("doc: entrada transposeg",doc.indexOf("entrada R$ 6.177,67")>=0);
+    T("doc: recomendada",doc.indexOf("RECOMENDADA")>=0);
+    T("doc: fipe format",doc.indexOf("98.610,00")>=0);
+    T("doc: veiculo unico",doc.indexOf("VEÍCULO ÚNICO")>=0);
+    // frota
+    p.veics.push({marca:"Volvo",ano:"2010",modelo:"FH",placa:"EJZ-8C33",chassi:"",fipe:"195223",impl:""});
+    renderDoc(p);
+    T("doc: frota 2 veiculos",$("propOverlay").innerHTML.indexOf("FROTA · 2 VEÍCULOS")>=0);
+    // problemas parado
+    DB.problemas.push({id:"pr1",cliente:"Teste",placa:"ABC",tipo:"Colisão",data:"2026-08-01",ultAtual:"2026-08-01",status:"aberto",updates:[]});
+    T("alerta problema parado",alertas().some(function(a){return a.txt.indexOf("sem movimento")>=0;}));
+    // fin
+    DB.fin.push({id:"f1",tipo:"entrada",valor:100,data:hojeISO(),desc:"t"},{id:"f2",tipo:"saida",valor:40,data:hojeISO(),desc:"t"},{id:"f3",tipo:"comissao",valor:10,data:hojeISO(),desc:"t"});
+    var mes=hojeISO().slice(0,7);
+    var ent=DB.fin.filter(function(l){return l.tipo==="entrada"&&l.data.slice(0,7)===mes;}).reduce(function(a,l){return a+l.valor;},0);
+    T("fin soma",ent===100);
+    // dashboard
+    DB.propostas.push({id:"px",num:"2026-009",data:hojeISO(),validadeDias:7,validadeAte:"2026-08-01",status:"enviada",obs:"",cliente:{nome:"Teste Transportes"},veics:[],cobs:[],ops:[{nome:"PREVENIR"}]});
+    var dash=PAGES.inicio();
+    T("dash: pendências de hoje",dash.indexOf("Para hoje")>=0);
+    T("dash: pendência nominal",dash.indexOf("Renovação de <b>Teste Transportes</b>")>=0);
+    T("dash: proposta sem resposta",dash.indexOf("passou da validade")>=0);
+    T("dash: funil",dash.indexOf("Funil de propostas")>=0);
+    T("dash: gráfico recebimentos",dash.indexOf("Recebimentos no período")>=0);
+    T("dash: carteira por operadora",dash.indexOf("Carteira por operadora")>=0);
+    T("dash: valor protegido",dash.indexOf("Valor protegido")>=0);
+    T("dash: barra de período",dash.indexOf("📅 Período:")>=0);
+    T("dash: sem botão nova proposta no topo",document.querySelector(".top-actions")===null);
+    T("filtro default = mês vigente",FILTRO.de===hojeISO().slice(0,7)+"-01"&&FILTRO.ate===hojeISO());
+    // botões Sim/Não
+    P={cobs:["Teste cob"],ops:[{nome:"A",vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false}]};
+    pSetVal(0,0,"Sim");T("yn: marca Sim",P.ops[0].vals["Teste cob"]==="Sim");
+    pSetVal(0,0,"Não");T("yn: troca pra Não",P.ops[0].vals["Teste cob"]==="Não");
+    pSetVal(0,0,"Não");T("yn: clicar de novo desmarca",P.ops[0].vals["Teste cob"]==="");
+    // colar do Excel (planilha de teste real, formato pt-BR)
+    abrirImport();
+    var tsv="RAZÃO SOCIAL / NOME\tCNPJ / CPF\tTELEFONE\tOPERADORA\tMENSALIDADE\tRENOVAÇÃO\tSITUAÇÃO\tPLACA\tMARCA\tMODELO\tANO\tFIPE\n"+
+      "TRANSPORTES SÃO JORGE LTDA\t41.552.870/0001-19\t(11) 98214-6633\tPREVENIR TRUCK\t1.989,86\t28/08/2026\tEm dia\tBXF-6776\tMERC. BENZ\t1318\t2004\t98.610\n"+
+      "MARCOS ANTONIO PEREIRA\t178.334.902-77\t(11) 96644-2810\tCOOPERVESC\t1.385,75\t02/09/2026\tInadimplente\tPXE-7H09\tVOLKSWAGEN\t24.250\t2010\t189.827";
+    lerImport(tsv);
+    T("excel: mapeamento adivinhou nome",document.querySelector('.impSel[data-i="0"]').value==="nome");
+    T("excel: mapeamento adivinhou fipe",document.querySelector('.impSel[data-i="11"]').value==="fipe");
+    fazImport();
+    var sj=DB.clientes.find(function(c){return c.nome==="TRANSPORTES SÃO JORGE LTDA";});
+    T("excel: cliente importado",!!sj);
+    T("excel: mensalidade 1.989,86",sj&&sj.mensalidade===1989.86);
+    T("excel: renovação 28/08",sj&&sj.renovacao==="2026-08-28");
+    T("excel: veículo com placa",sj&&sj.veiculos.length===1&&sj.veiculos[0].placa==="BXF-6776");
+    T("excel: fipe do veículo lê 98610",sj&&num(sj.veiculos[0].fipe)===98610);
+    var mp=DB.clientes.find(function(c){return c.nome==="MARCOS ANTONIO PEREIRA";});
+    T("excel: situação inadimplente",mp&&mp.status==="inadimplente");
+    // importar histórico financeiro + filtro por mês
+    var finTsv="Data\tDescrição\tCliente\tTipo\tValor\n"+
+      "15/01/2026\tMensalidade\tJoão Frete\tEntrada\t1.000,00\n"+
+      "20/01/2026\tComissão Prevenir\t\tComissão\t250,00\n"+
+      "22/01/2026\tCombustível\t\tSaída\t100,00\n"+
+      "10/03/2026\tMensalidade\tMaria Cargas\t\t-500,00";
+    abrirImportFin();lerImportFin(finTsv);
+    T("fin-imp: mapeou data",document.querySelector('.impfSel[data-i="0"]').value==="data");
+    T("fin-imp: mapeou valor",document.querySelector('.impfSel[data-i="4"]').value==="valor");
+    fazImportFin();
+    T("fin-imp: entrada jan",DB.fin.some(function(l){return l.data==="2026-01-15"&&l.tipo==="entrada"&&l.valor===1000;}));
+    T("fin-imp: comissão jan",DB.fin.some(function(l){return l.data==="2026-01-20"&&l.tipo==="comissao"&&l.valor===250;}));
+    T("fin-imp: saída jan",DB.fin.some(function(l){return l.data==="2026-01-22"&&l.tipo==="saida"&&l.valor===100;}));
+    T("fin-imp: negativo vira saída",DB.fin.some(function(l){return l.data==="2026-03-10"&&l.tipo==="saida"&&l.valor===500;}));
+    var antes=DB.fin.length;
+    abrirImportFin();lerImportFin(finTsv);fazImportFin();
+    T("fin-imp: reimportar não duplica",DB.fin.length===antes);
+    FILTRO={de:"2026-01-01",ate:"2026-01-31",preset:""};
+    var dashJan=PAGES.inicio();
+    T("filtro jan: recebido 1.250",dashJan.indexOf(brl0(1250))>=0);
+    T("filtro jan: saídas 100",dashJan.indexOf("saídas: "+brl0(100))>=0);
+    FILTRO={de:"2026-01-01",ate:hojeISO(),preset:"tudo"};
+    var dashTudo=PAGES.inicio();
+    T("filtro tudo: por mês",dashTudo.indexOf("por mês")>=0);
+    filtroDefault();
+    // copiar preenchimento entre operadoras
+    P={cobs:["A","B"],ops:[{nome:"PREVENIR",vals:{A:"Sim",B:"6% da FIPE"},total:"100",entrada:"",maxParc:12,nota:"",destaque:false},
+      {nome:"COOPERVESC",vals:{},total:"200",entrada:"",maxParc:11,nota:"",destaque:false}]};
+    pDoCopy(1,0);
+    T("copiar: coberturas iguais",P.ops[1].vals.A==="Sim"&&P.ops[1].vals.B==="6% da FIPE");
+    T("copiar: total NÃO copiado",P.ops[1].total==="200");
+    P.ops[1].vals.A="Não";
+    T("copiar: cópia independente",P.ops[0].vals.A==="Sim");
+    T("copiar: fonte detectada",opTemDados(P.ops[0])&&!opTemDados({vals:{X:""}}));
+    // dois modelos de proposta
+    novaProposta("frota");T("frota: começa com 3 veículos",P.veics.length===3);
+    novaProposta("unico");T("único: começa com 1 veículo",P.veics.length===1);
+    T("editor: botão gerar embaixo",PAGES.editProp().indexOf("É só gerar aqui mesmo")>=0);
+    DB.propostas.push({id:"pf1",num:"2026-777",data:hojeISO(),validadeDias:7,status:"rascunho",obs:"",cliente:{nome:"Frota Teste SA"},cobs:[],ops:[],
+      veics:[{marca:"V",modelo:"FH",placa:"AAA-1111",fipe:"1"},{marca:"V",modelo:"FH",placa:"BBB-2222",fipe:"1"}]});
+    propFiltro="frota";
+    var pgF=PAGES.propostas();
+    T("filtro frota: mostra frota",pgF.indexOf("Frota Teste SA")>=0);
+    T("filtro frota: esconde único",pgF.indexOf("2026-009")<0);
+    propFiltro="todas";
+    T("propostas: dois botões de modelo",PAGES.propostas().indexOf("Nova proposta — Frota")>=0);
+    // modo demonstração
+    seedDemo();
+    T("demo: 10 clientes",DB.clientes.length===10);
+    T("demo: 4 propostas (1 frota)",DB.propostas.length===4&&DB.propostas.filter(function(p){return nvProp(p)>=2;}).length===1);
+    T("demo: problemas + financeiro",DB.problemas.length===3&&DB.fin.length===19);
+    T("demo: faixa ligada",(refreshCounts(),$("demoFlag").classList.contains("on")));
+    var dashDemo=PAGES.inicio();
+    T("demo: dashboard com pendências",dashDemo.indexOf("Para hoje")>=0&&dashDemo.indexOf("inadimplente")>=0);
+    renderDoc(DB.propostas[0]);
+    T("demo: proposta TR Gimenez gera doc",$("propOverlay").innerHTML.indexOf("TR GIMENEZ")>=0&&$("propOverlay").innerHTML.indexOf("911,71")>=0);
+  }catch(e){R.push("FAIL :: exceção: "+e.message);}
+  var div=document.createElement("pre");div.id="selftestOut";div.textContent=R.join("\n");
+  document.body.appendChild(div);
+  localStorage.removeItem(DBKEY); // não poluir os dados reais
+}
+
+/* =================== MODO DEMONSTRAÇÃO (?demo=1) =================== */
+function dOff(n){var d=new Date();d.setDate(d.getDate()+n);return isoDe(d);}
+function seedDemo(){
+  DB=dbDefault();DB.demo=true;
+  DB.corretora={nome:"Corretora Exemplo Proteção Veicular",cnpj:"12.345.678/0001-90",tel:"(11) 99999-0000",mail:"contato@corretoraexemplo.com.br"};
+  var C=[
+   ["TRANSPORTES SÃO JORGE LTDA","41.552.870/0001-19","(11) 98214-6633","PREVENIR TRUCK",1989.86,7,"emdia","BXF-6776","MERC. BENZ","1318 2 PORTAS DIESEL","2004","98610"],
+   ["RODOVIÁRIO IRMÃOS CAMPOS","52.108.334/0001-77","(11) 97730-1284","COOPERVESC",2450,15,"emdia","EJZ-8C33","VOLVO","FH 480 4X2","2010","195223"],
+   ["JOSÉ CARLOS DA SILVA FRETES","221.409.558-04","(13) 99182-4470","COOP. TRANSPOSEG",1610.5,2,"atrasado","QAB-1F22","SCANIA","R450 6X2","2015","289900"],
+   ["EXPRESSO VALE DO RIBEIRA","33.905.412/0001-08","(15) 98801-9932","PREVENIR TRUCK",3120,115,"emdia","FDZ-0G59","VOLVO","FH 460 GLOBETROTTER","2013","246809"],
+   ["MARCOS ANTONIO PEREIRA","178.334.902-77","(11) 96644-2810","COOPERVESC",1385.75,12,"inadimplente","PXE-7H09","VOLKSWAGEN","24.250 CONSTELLATION","2010","189827"],
+   ["LOGÍSTICA BOA VIAGEM LTDA","58.221.906/0001-63","(19) 98115-7248","PREVENIR TRUCK",2890,60,"emdia","GAK-3F21","IVECO","HI-WAY 480","2019","398500"],
+   ["ANDERSON LUIZ TRANSPORTES","305.887.114-30","(11) 95511-0908","COOP. TRANSPOSEG",1740.2,5,"atrasado","KEN-7759","FORD","CARGO 2429","2014","158300"],
+   ["CEREALISTA CAMPO ALEGRE","47.660.281/0001-55","(14) 99722-3161","COOPERVESC",2260.4,100,"emdia","EMO-1618","VOLKSWAGEN","24.250 E 3 EIXOS","2010","189827"],
+   ["TRANSPORTADORA HORIZONTE AZUL","61.448.007/0001-92","(12) 98430-5577","PREVENIR TRUCK",4150,19,"emdia","FEI-1D31","SCANIA","R500 6X4","2021","612400"],
+   ["APARECIDO DONIZETE RAMOS","099.216.744-81","(16) 99650-1123","COOP. TRANSPOSEG",1290,28,"novo","DPF-9I40","MERC. BENZ","ATEGO 2426","2012","175900"]];
+  DB.clientes=C.map(function(c){return {id:uid(),nome:c[0],doc:c[1],tel:c[2],mail:"",operadora:c[3],mensalidade:c[4],renovacao:dOff(c[5]),status:c[6],obs:"",
+    veiculos:[{marca:c[8],modelo:c[9],ano:c[10],placa:c[7],fipe:c[11]}]};});
+  var cobs=COBERTURAS_PADRAO.slice();
+  var prev={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"6% da FIPE","Franquia semi-reboque / carroceria":"6% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"Não","Danos materiais":"100000","Danos corporais":"100000","Danos morais":"60000","APP Morte":"30000","APP Invalidez":"30000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 40%","Farol / lanterna / demais vidros":"Não","Assistência 24h após sinistro":"Sim","Destombamento":"Até 10 salários","Assistência 24h pane":"150km ida e volta · 1x a cada 90 dias","Forma de pagamento":"Boleto"};
+  var coop={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"5% da FIPE","Franquia semi-reboque / carroceria":"10% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Não","Incêndio de qualquer natureza":"Não","DM/DC compartilhado":"Não","Danos materiais":"300000","Danos corporais":"300000","Danos morais":"50000","APP Morte":"100000","APP Invalidez":"100000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 30%","Farol / lanterna / demais vidros":"Sim 2x a.a. · part. 30%","Assistência 24h após sinistro":"Sim","Destombamento":"Não tem","Assistência 24h pane":"500km ida e volta · 2x a.a.","Forma de pagamento":"Boleto"};
+  var tran={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"4% da FIPE","Franquia semi-reboque / carroceria":"4% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"300000","Danos materiais":"Vide DM/DC","Danos corporais":"Vide DM/DC","Danos morais":"30000","APP Morte":"50000","APP Invalidez":"50000","Para-brisa / retrovisores":"Até R$ 6.000 · part. 40%","Farol / lanterna / demais vidros":"Até R$ 6.000 · part. 40%","Assistência 24h após sinistro":"Ilimitado","Destombamento":"Até R$ 4.000","Assistência 24h pane":"400km de raio · 4x a.a. (a cada 30 dias)","Forma de pagamento":"Boleto"};
+  function op(n,v,t,e,mx,d){return {nome:n,vals:JSON.parse(JSON.stringify(v)),total:t,entrada:e||"",maxParc:mx,nota:"",destaque:!!d};}
+  DB.propostas=[
+   {id:uid(),num:"2026-001",data:dOff(-1),validadeDias:7,validadeAte:dOff(6),status:"enviada",obs:"Valores sujeitos a vistoria e análise cadastral.",
+    cliente:{nome:"TR GIMENEZ LOGISTICA E TRANSPORTES LTDA",doc:"35.158.499/0001-44",end:"",cep:"",carga:"Carga seca"},
+    veics:[{marca:"MERC. BENZ",ano:"2004",modelo:"1318 2 PORTAS DIESEL",placa:"BXF-6776",chassi:"",fipe:"98610",impl:"50000"}],
+    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"10940,52","",12),op("COOPERVESC",coop,"12828,75","",11),op("COOP. TRANSPOSEG",tran,"10337,76","",12,true)]},
+   {id:uid(),num:"2026-002",data:dOff(-3),validadeDias:7,validadeAte:dOff(4),status:"rascunho",obs:"",
+    cliente:{nome:"ALTAIRSON APARECIDO MACHADO JUNIOR",doc:"15.551.528/0001-26",end:"",cep:"",carga:"Granel / báscula"},
+    veics:[{marca:"VOLVO",ano:"2008",modelo:"FH 440 4X2",placa:"DPF-9I40",chassi:"",fipe:"163195",impl:""},{marca:"VOLVO",ano:"2010",modelo:"FH 480 4X2",placa:"EJZ-8C33",chassi:"",fipe:"195223",impl:""},
+      {marca:"VOLKSWAGEN",ano:"2010",modelo:"24.250 E CONST. 3 EIXOS",placa:"EMO-1618",chassi:"",fipe:"189827",impl:""},{marca:"VOLVO",ano:"2013",modelo:"FH 460 GLOBETROTTER",placa:"FDZ-0G59",chassi:"",fipe:"246809",impl:""},
+      {marca:"RANDON",ano:"2011",modelo:"SR BAÚ ALUMÍNIO",placa:"EKH-8A90",chassi:"",fipe:"",impl:"120000"},{marca:"RANDON",ano:"2013",modelo:"SR BAÚ ALUMÍNIO",placa:"FEI-1D31",chassi:"",fipe:"",impl:"150000"},
+      {marca:"CAÇAMBA",ano:"2023",modelo:"BASCULANTE",placa:"GAK-3F21",chassi:"",fipe:"",impl:"185000"},{marca:"RANDON",ano:"2002",modelo:"SR TANQUE",placa:"KEN-7759",chassi:"",fipe:"",impl:"100000"}],
+    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"61384,80","",12),op("COOPERVESC",coop,"65197,84","6177,67",12,true),op("COOP. TRANSPOSEG",tran,"64489,08","",12)]},
+   {id:uid(),num:"2026-003",data:dOff(-12),validadeDias:7,validadeAte:dOff(-5),status:"fechada",obs:"",
+    cliente:{nome:"TRANSPORTADORA HORIZONTE AZUL",doc:"61.448.007/0001-92",end:"",cep:"",carga:""},
+    veics:[{marca:"SCANIA",ano:"2021",modelo:"R500 6X4",placa:"FEI-1D31",chassi:"",fipe:"612400",impl:""}],
+    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"49800,00","",12,true),op("COOPERVESC",coop,"53100,00","",11)]},
+   {id:uid(),num:"2026-004",data:dOff(-20),validadeDias:7,validadeAte:dOff(-13),status:"recusada",obs:"",
+    cliente:{nome:"CEREALISTA CAMPO ALEGRE",doc:"47.660.281/0001-55",end:"",cep:"",carga:"Grãos"},
+    veics:[{marca:"VOLKSWAGEN",ano:"2010",modelo:"24.250 E 3 EIXOS",placa:"EMO-1618",chassi:"",fipe:"189827",impl:""}],
+    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"27120,00","",12)]}];
+  DB.seqProposta=5;
+  DB.problemas=[
+   {id:uid(),cliente:"JOSÉ CARLOS DA SILVA FRETES",placa:"QAB-1F22",tipo:"Colisão",data:dOff(-9),ultAtual:dOff(-8),status:"andamento",updates:[{data:dOff(-9),txt:"Cliente ligou: colisão traseira na Dutra, sem feridos. Fotos recebidas por WhatsApp."},{data:dOff(-8),txt:"Aberto na Transposeg, protocolo 55821. Aguardando vistoria."}]},
+   {id:uid(),cliente:"MARCOS ANTONIO PEREIRA",placa:"PXE-7H09",tipo:"Vidro / Para-brisa",data:dOff(-2),ultAtual:dOff(-2),status:"aberto",updates:[{data:dOff(-2),txt:"Para-brisa trincado por pedra. Cliente pediu orientação sobre a franquia."}]},
+   {id:uid(),cliente:"LOGÍSTICA BOA VIAGEM LTDA",placa:"GAK-3F21",tipo:"Pane / Guincho",data:dOff(-30),ultAtual:dOff(-26),status:"resolvido",updates:[{data:dOff(-30),txt:"Pane elétrica na BR-116. Guincho acionado pela Prevenir."},{data:dOff(-26),txt:"Veículo entregue na oficina e liberado. Cliente satisfeito."}]}];
+  var fin=[];
+  var base=[[-150,"Comissão Prevenir — abril","comissao",2380],[-140,"Mensalidades recebidas — abril","entrada",18900],[-135,"Aluguel escritório","saida",1800],
+    [-120,"Comissão Coopervesc — maio","comissao",1960],[-110,"Mensalidades recebidas — maio","entrada",19650],[-105,"Telefone + internet","saida",420],
+    [-90,"Comissão Prevenir — junho","comissao",2720],[-80,"Mensalidades recebidas — junho","entrada",20300],[-75,"Aluguel escritório","saida",1800],
+    [-60,"Comissão Transposeg — julho","comissao",2140],[-50,"Mensalidades recebidas — julho","entrada",21150],[-45,"Contador","saida",650],
+    [-28,"Comissão Prevenir — agosto","comissao",2890],[-18,"Mensalidades recebidas — 1ª quinzena","entrada",11200],[-15,"Aluguel escritório","saida",1800],
+    [-6,"Mensalidade — Horizonte Azul","entrada",4150],[-4,"Mensalidade — Expresso Vale do Ribeira","entrada",3120],[-2,"Mensalidade — Boa Viagem","entrada",2890],[-1,"Comissão Coopervesc — parcial","comissao",640]];
+  base.forEach(function(b){fin.push({id:uid(),tipo:b[2],valor:b[3],data:dOff(b[0]),desc:b[1]});});
+  DB.fin=fin;DB.ultimoBackup=dOff(-3);
+  save();
+}
+
+/* =================== INIT =================== */
+load();
+if(location.search.indexOf("selftest")>=0){selftest();}
+else{
+  if(location.search.indexOf("demo")>=0&&!DB.clientes.length&&!DB.propostas.length){seedDemo();setTimeout(function(){toast("🎬 Modo demonstração: dados fictícios carregados");},400);}
+  go("inicio");
+}
+</script>
+</body>
+</html>
