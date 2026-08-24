@@ -285,6 +285,7 @@
 <input type="file" id="fileRestore" accept=".json" style="display:none">
 <input type="file" id="fileImport" accept=".xlsx,.csv,.txt,.tsv" style="display:none">
 <input type="file" id="fileImportFin" accept=".xlsx,.csv,.txt,.tsv" style="display:none">
+<input type="file" id="fileImportProp" accept=".xlsx" style="display:none">
 
 <script>
 "use strict";
@@ -778,12 +779,85 @@ var OPS_SUGERIDAS=["PREVENIR TRUCK","COOPERVESC","COOP. TRANSPOSEG"];
 var P=null; // proposta em edição
 var propBad={rascunho:["b-mut","Rascunho"],enviada:["b-blue","Enviada"],fechada:["b-ok","Fechada"],recusada:["b-red","Recusada"]};
 
+/* ====== IMPORTAR ORÇAMENTO ANTIGO (a planilha-modelo do Luiz) ====== */
+function parseOrcamentoLuiz(rows){
+  function cel(r,c){return (rows[r]&&rows[r][c]!=null)?String(rows[r][c]).trim():"";}
+  var nr=rows.length,nc=0;rows.forEach(function(r){if(r.length>nc)nc=r.length;});
+  var out={cliente:{nome:"",doc:"",end:"",cep:"",carga:""},veics:[],cobs:[],ops:[]};
+  var vehHead=-1,opRow=-1;
+  for(var r=0;r<nr;r++){
+    var a=cel(r,0).toUpperCase(),linha=(rows[r]||[]).join(" ").toUpperCase();
+    if(vehHead<0&&linha.indexOf("MARCA")>=0&&linha.indexOf("MODELO")>=0)vehHead=r;
+    if(opRow<0&&/ASSOCIA|COOPERATIVA/.test(a))opRow=r;
+  }
+  var topo=vehHead>0?vehHead:Math.min(nr,10);
+  for(var r=0;r<topo;r++){
+    var a=cel(r,0).toUpperCase(),val="";
+    for(var c=1;c<nc;c++){if(cel(r,c)){val=cel(r,c);break;}}
+    if(!val)continue;
+    if(/RAZ[AÃ]O|NOME/.test(a)&&!out.cliente.nome)out.cliente.nome=val;
+    else if(/CNPJ|CPF/.test(a)&&!out.cliente.doc)out.cliente.doc=val;
+    else if(/ENDERE/.test(a)&&!out.cliente.end)out.cliente.end=val;
+    else if(/CEP/.test(a)&&!out.cliente.cep)out.cliente.cep=val;
+    else if(/CARGA/.test(a)&&!out.cliente.carga)out.cliente.carga=val;
+  }
+  if(vehHead>=0){
+    for(var r=vehHead+1;r<nr;r++){
+      if(!/^\d+$/.test(cel(r,0)))break;
+      out.veics.push({marca:cel(r,1),ano:cel(r,2),modelo:cel(r,3),placa:cel(r,4),chassi:cel(r,5),fipe:cel(r,6),impl:cel(r,7)});
+    }
+  }
+  if(opRow<0)return out;
+  var ops=[];
+  for(var c=1;c<nc;c++){var nOp=cel(opRow,c);if(nOp)ops.push({nome:nOp,vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false,_col:c,_max:0,_pv:{},_ent:""});}
+  for(var r=opRow+1;r<nr;r++){
+    var a=cel(r,0);
+    var mPar=a.match(/^(\d{1,2})\s*[xX]$/);
+    if(mPar){
+      var n=parseInt(mPar[1]);
+      ops.forEach(function(o){var raw=cel(r,o._col),v=num(raw);
+        if(v!=null){o._pv[n]=v;if(n===1&&!o.total)o.total=raw;if(n>o._max)o._max=n;}});
+      continue;
+    }
+    ops.forEach(function(o){var t=cel(r,o._col);
+      if(/1\s*a\s*parc/i.test(t)){var m2=t.match(/[\d.,]+/g);if(m2&&num(m2[m2.length-1])!=null)o._ent=m2[m2.length-1];}});
+    if(!a||/TIPO DE COBERTURA/i.test(a))continue;
+    var temVal=ops.some(function(o){var v=cel(r,o._col);return v&&!/1\s*a\s*parc/i.test(v);});
+    if(!temVal)continue;
+    var label=a.replace(/\s+/g," ").trim();
+    if(/FORMAS DE PAGAMENTO/i.test(label))label="Forma de pagamento";
+    out.cobs.push(label);
+    ops.forEach(function(o){var v=cel(r,o._col);if(v&&!/1\s*a\s*parc/i.test(v))o.vals[label]=v;});
+  }
+  ops.forEach(function(o){
+    if(o._ent){
+      var t=num(o.total),e=num(o._ent),n=o._max,v=o._pv[n];
+      if(t!=null&&e!=null&&n>1&&v!=null&&Math.abs((t-e)/n-v)<=0.06)o.entrada=o._ent;
+      else o.nota="1ª parcela: R$ "+o._ent+" (padrão da operadora — conferir)";
+    }
+    o.maxParc=o._max>=1?o._max:12;
+    delete o._col;delete o._pv;delete o._ent;delete o._max;
+  });
+  out.ops=ops;
+  return out;
+}
+function abrirOrcamentoImportado(pr,nomeArq){
+  P={id:uid(),num:String(new Date().getFullYear())+"-"+String(DB.seqProposta).padStart(3,"0"),data:hojeISO(),validadeDias:7,
+     status:"rascunho",cliente:{nome:pr.cliente.nome,doc:pr.cliente.doc,end:pr.cliente.end,cep:pr.cliente.cep,carga:pr.cliente.carga},
+     veics:pr.veics.length?pr.veics:[veicVazio()],
+     cobs:pr.cobs.length?pr.cobs:COBERTURAS_PADRAO.slice(),
+     ops:pr.ops.length?pr.ops:OPS_SUGERIDAS.map(function(nm){return {nome:nm,vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false};}),
+     obs:""};
+  go("editProp");
+  toast("📗 Orçamento lido: "+(pr.cliente.nome||nomeArq)+" · "+pr.veics.length+" veículo(s) · "+pr.ops.length+" operadora(s) — confira e clique em Salvar e gerar PDF");
+}
 var propFiltro="todas";
 function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;}
 PAGES.propostas=function(){
   var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
     '<button class="btn primary" onclick="novaProposta(\'unico\')">➕ Nova proposta — 1 veículo</button>'+
-    '<button class="btn primary" onclick="novaProposta(\'frota\')">🚛 Nova proposta — Frota</button></div>';
+    '<button class="btn primary" onclick="novaProposta(\'frota\')">🚛 Nova proposta — Frota</button>'+
+    '<button class="btn" onclick="$(\'fileImportProp\').click()" title="Lê a planilha de orçamento antiga (Excel) e monta a proposta pronta">⬆ Importar orçamento antigo</button></div>';
   if(!DB.propostas.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta ainda. Escolha o modelo acima: <b>1 veículo</b> (comum) ou <b>Frota</b> (a partir de 2 veículos). Você preenche uma vez, o sistema calcula as parcelas e gera o PDF comparativo com as operadoras lado a lado.</div>';
   var unicos=DB.propostas.filter(function(p){return nvProp(p)<2;}).length;
   var frotas=DB.propostas.length-unicos;
@@ -1228,6 +1302,13 @@ function fazImportFin(){
 }
 $("fileImportFin").addEventListener("change",function(){var f=this.files[0];if(!f)return;
   trataArquivoImport(f,"impfTxt",lerImportFin);this.value="";});
+$("fileImportProp").addEventListener("change",function(){var f=this.files[0];if(!f)return;
+  var nomeArq=f.name;this.value="";
+  xlsxParaLinhas(f).then(function(rows){
+    var pr=parseOrcamentoLuiz(rows);
+    if(!pr.ops.length&&!pr.veics.length)throw new Error("não reconheci o modelo desse orçamento");
+    abrirOrcamentoImportado(pr,nomeArq);
+  }).catch(function(e){toast("⚠️ Não consegui ler esse orçamento ("+e.message+"). Dá pra criar a proposta manualmente em ➕ Nova proposta.");});});
 
 /* =================== CONFIG =================== */
 PAGES.config=function(){
@@ -1272,6 +1353,27 @@ function selftest(){
     T("data texto continua ok",parseDataAuto("28/08/2026")==="2026-08-28");
     T("data inválida = null",parseDataAuto("abc")===null&&parseDataAuto("150")===null);
     T("leitor xlsx presente",typeof xlsxParaLinhas==="function"&&typeof DecompressionStream!=="undefined");
+    var fakeOrc=[["PLANILHA DE ORCAMENTOS VARIAS OPÇÕES"],
+      ["RAZAO SOCIAL / NOME","","TR TESTE LTDA"],["CNPJ OU CPF","","11.111.111/0001-11"],["TIPO DE CARGA","","GRÃOS"],
+      ["ITEM","MARCA","ANO","MODELO","PLACA","CHASSIS","TABE FIPE 100%","IMPLEMENTO"],
+      ["1","VOLVO","2010","FH 440","AAA-1111","","163195","50000"],
+      ["ASSOCIAÇÃO / COOPERATIVA","","","","PREVENIR","","COOPERVESC",""],
+      ["TIPO DE COBERTURA"],
+      ["DANOS MORAIS","","","","60000","","50000",""],
+      ["FORMAS DE PAGAMENTO","","","","BOLETO","","BOLETO",""],
+      ["","","","","","","1a parc.R$. 1.500,00",""],
+      ["1x","","","","10000","","13000",""],
+      ["2X","","","","5000","","5750",""]];
+    var pr=parseOrcamentoLuiz(fakeOrc);
+    T("orç: cliente lido",pr.cliente.nome==="TR TESTE LTDA"&&pr.cliente.carga==="GRÃOS");
+    T("orç: veículo lido",pr.veics.length===1&&pr.veics[0].fipe==="163195"&&pr.veics[0].impl==="50000");
+    T("orç: 2 operadoras",pr.ops.length===2&&pr.ops[0].nome==="PREVENIR"&&pr.ops[1].nome==="COOPERVESC");
+    T("orç: total e maxParc",pr.ops[0].total==="10000"&&pr.ops[0].maxParc===2);
+    T("orç: entrada consistente vira entrada",pr.ops[1].entrada==="1.500,00");
+    T("orç: coberturas com labels dele",pr.cobs.indexOf("DANOS MORAIS")>=0&&pr.cobs.indexOf("Forma de pagamento")>=0);
+    var fake2=JSON.parse(JSON.stringify(fakeOrc));fake2[12]=["2X","","","","5000","","9999",""];
+    var pr2=parseOrcamentoLuiz(fake2);
+    T("orç: entrada inconsistente vira nota",pr2.ops[1].entrada===""&&pr2.ops[1].nota.indexOf("1.500,00")>=0);
     T("brl",brl(5470.26)==="R$ "+(5470.26).toLocaleString("pt-BR",{minimumFractionDigits:2}));
     T("parseDataBR",parseDataBR("05/09/2026")==="2026-09-05");
     T("fmtData",fmtData("2026-09-05")==="05/09/2026");
