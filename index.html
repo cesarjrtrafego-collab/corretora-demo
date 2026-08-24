@@ -68,6 +68,7 @@
   .fpre{border:1px solid var(--line);background:#fff;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:20px;cursor:pointer;font-family:inherit}
   .fpre:hover{border-color:var(--gold);color:var(--gold-d)}
   .fpre.on{background:var(--navy);border-color:var(--navy);color:var(--gold)}
+  .stsel{border:none;border-radius:20px;padding:4px 9px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
   .dash2{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
   @media(max-width:940px){.dash2{grid-template-columns:1fr}}
   .pend{display:flex;flex-direction:column;gap:8px}
@@ -88,7 +89,7 @@
   .legend .ln{flex:1;color:#454c60;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .legend .lv{font-weight:700;color:var(--navy)}
   .funrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px}
-  .funrow .fl{width:78px;color:var(--muted);font-weight:600;flex-shrink:0}
+  .funrow .fl{width:92px;color:var(--muted);font-weight:600;flex-shrink:0}
   .funrow .ftrack{flex:1;background:#eef0f5;border-radius:8px;height:20px;overflow:hidden}
   .funrow .fbar{height:100%;border-radius:8px;min-width:2px;transition:.3s}
   .funrow .fv{width:26px;text-align:right;font-weight:800;color:var(--navy);flex-shrink:0}
@@ -343,6 +344,7 @@ function load(){try{DB=JSON.parse(localStorage.getItem(DBKEY))||dbDefault();}cat
   if(!DB.corretora)DB.corretora=dbDefault().corretora;
   if(!DB.corretora.nome)DB.corretora=JSON.parse(JSON.stringify(CORRETORA_PADRAO));
   if(DB.corretora.end==null)DB.corretora.end=CORRETORA_PADRAO.end;
+  migraStatusPropostas();
   if(!DB.seqProposta)DB.seqProposta=1;}
 function save(){try{localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){toast("⚠️ Não consegui salvar: "+e.message);}refreshCounts();}
 function backupJSON(){
@@ -420,7 +422,7 @@ function pendencias(){
     if(dm>=5)out.push({ic:"🚨",html:esc(p.tipo)+" de <b>"+esc(p.cliente)+"</b> está <b>parado há "+dm+" dias</b> — dê um retorno",tag:'<span class="badge b-red">parado</span>',go:"problemas",ord:-80-dm});
   });
   DB.propostas.forEach(function(p){
-    if(p.status!=="enviada")return;
+    if(p.status!=="enviada"&&p.status!=="aguardando")return;
     var d=diasAte(p.validadeAte);
     if(d!=null&&d<0)out.push({ic:"⏳",html:"Proposta <b>Nº "+esc(p.num)+"</b> de <b>"+esc(p.cliente.nome)+"</b> passou da validade — cobre uma resposta",tag:'<span class="badge b-wait">sem resposta</span>',go:"propostas",ord:-10});
   });
@@ -459,9 +461,10 @@ PAGES.inicio=function(){
   var abertosProb=DB.problemas.filter(function(x){return x.status!=="resolvido"&&x.status!=="negado";}).length;
   var propsPer=DB.propostas.filter(function(p){return inPer(p.data);});
   var enviadas=propsPer.filter(function(p){return p.status==="enviada";}).length;
+  var aguardandoN=propsPer.filter(function(p){return p.status==="aguardando";}).length;
   var fechadas=propsPer.filter(function(p){return p.status==="fechada";}).length;
-  var recusadas=propsPer.filter(function(p){return p.status==="recusada";}).length;
-  var taxa=(fechadas+recusadas)>0?Math.round(fechadas/(fechadas+recusadas)*100)+"%":"—";
+  var perdidas=propsPer.filter(function(p){return p.status==="perdida";}).length;
+  var taxa=(fechadas+perdidas)>0?Math.round(fechadas/(fechadas+perdidas)*100)+"%":"—";
   var protegido=0;
   DB.clientes.forEach(function(c){(c.veiculos||[]).forEach(function(v){var f=num(v.fipe);if(f)protegido+=f;});});
   var mensalRec=DB.clientes.filter(function(c){return c.status!=="inativo"&&c.mensalidade;}).reduce(function(a,c){return a+c.mensalidade;},0);
@@ -485,7 +488,7 @@ PAGES.inicio=function(){
     '<div class="kpi"><div class="lbl">👥 Clientes ativos</div><div class="val">'+DB.clientes.filter(function(c){return c.status!=="inativo";}).length+'</div><div class="foot">'+DB.clientes.filter(function(c){return c.status==="inadimplente"||c.status==="atrasado";}).length+' com pendência de pagamento</div></div>'+
     '<div class="kpi"><div class="lbl">💵 Mensalidades da carteira</div><div class="val">'+(mensalRec?brl0(mensalRec):"—")+'</div><div class="foot">por mês, clientes ativos</div></div>'+
     '<div class="kpi"><div class="lbl">✅ Recebido no período</div><div class="val">'+brl0(recebido)+'</div><div class="foot">comissões: '+brl0(comis)+' · saídas: '+brl0(saidasPer)+'</div></div>'+
-    '<div class="kpi"><div class="lbl">🎯 Aproveitamento de propostas</div><div class="val">'+taxa+'</div><div class="foot">'+fechadas+' fechada(s) · '+enviadas+' aguardando · no período</div></div></div>';
+    '<div class="kpi"><div class="lbl">🎯 Aproveitamento de propostas</div><div class="val">'+taxa+'</div><div class="foot">'+fechadas+' fechada(s) · '+(enviadas+aguardandoN)+' em andamento · no período</div></div></div>';
 
   /* ---- onboarding se vazio ---- */
   if(!temDados){
@@ -508,7 +511,7 @@ PAGES.inicio=function(){
 
   /* funil de propostas (do período) */
   var funil=[["Rascunho",propsPer.filter(function(p){return p.status==="rascunho";}).length,"#9aa1b3"],
-    ["Enviadas",enviadas,"#2f6df6"],["Fechadas",fechadas,"#16a34a"],["Recusadas",recusadas,"#e0483b"]];
+    ["Enviadas",enviadas,"#2f6df6"],["Aguardando",aguardandoN,"#e8912f"],["Fechadas",fechadas,"#16a34a"],["Perdidas",perdidas,"#e0483b"]];
   var fmax=Math.max.apply(null,funil.map(function(f){return f[1];}).concat([1]));
   h+='<div class="card" style="margin-top:16px"><h3>📄 Funil de propostas</h3><div class="csub">Orçamentos feitos no período escolhido.</div>';
   funil.forEach(function(f){h+='<div class="funrow"><span class="fl">'+f[0]+'</span><div class="ftrack"><div class="fbar" style="width:'+Math.round(f[1]/fmax*100)+'%;background:'+f[2]+'"></div></div><span class="fv">'+f[1]+'</span></div>';});
@@ -791,7 +794,8 @@ var COBERTURAS_PADRAO=["Cobertura da Tabela FIPE","Valor do implemento","Franqui
   "Farol / lanterna / demais vidros","Assistência 24h após sinistro","Destombamento","Assistência 24h pane","Forma de pagamento"];
 var OPS_SUGERIDAS=["PREVENIR TRUCK","COOPERVESC","COOP. TRANSPOSEG"];
 var P=null; // proposta em edição
-var propBad={rascunho:["b-mut","Rascunho"],enviada:["b-blue","Enviada"],fechada:["b-ok","Fechada"],recusada:["b-red","Recusada"]};
+var propBad={rascunho:["b-mut","Rascunho"],enviada:["b-blue","Enviada"],aguardando:["b-wait","Aguardando retorno"],fechada:["b-ok","Fechada"],perdida:["b-red","Perdida"]};
+function migraStatusPropostas(){DB.propostas.forEach(function(p){if(p.status==="recusada")p.status="perdida";});}
 
 /* ====== IMPORTAR ORÇAMENTO ANTIGO (a planilha-modelo do Luiz) ====== */
 function parseOrcamentoLuiz(rows){
@@ -866,6 +870,7 @@ function abrirOrcamentoImportado(pr,nomeArq){
   toast("📗 Orçamento lido: "+(pr.cliente.nome||nomeArq)+" · "+pr.veics.length+" veículo(s) · "+pr.ops.length+" operadora(s) — confira e clique em Salvar e gerar PDF");
 }
 var propFiltro="todas";
+var propSit="todas";
 function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;}
 function propValor(p){
   var comTotal=(p.ops||[]).filter(function(o){return num(o.total)!=null;});
@@ -893,11 +898,16 @@ PAGES.propostas=function(){
   h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
     [["todas","Todas",DB.propostas.length],["unico","1 veículo",unicos],["frota","Frota",frotas]].map(function(t){
       return '<button class="fpre'+(propFiltro===t[0]?" on":"")+'" onclick="propFiltro=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
-  var lista=DB.propostas.filter(function(p){
+  var listaT=DB.propostas.filter(function(p){
     if(propFiltro==="unico")return nvProp(p)<2;
     if(propFiltro==="frota")return nvProp(p)>=2;
     return true;});
-  if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
+  if(!listaT.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+    [["todas","Todas",listaT.length]].concat(Object.keys(propBad).map(function(k){return [k,propBad[k][1],listaT.filter(function(p){return p.status===k;}).length];}))
+      .map(function(t){return '<button class="fpre'+(propSit===t[0]?" on":"")+'" onclick="propSit=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
+  var lista=propSit==="todas"?listaT:listaT.filter(function(p){return p.status===propSit;});
+  if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta <b>nessa situação</b> — mude o filtro acima.</div>';
   h+='<div class="tbl-wrap"><table class="fit"><thead><tr><th>Nº / Data</th><th>Cliente / Operadoras</th><th>Tipo</th><th class="r">Valor / comissão</th><th>Situação</th><th></th></tr></thead><tbody>'+
     lista.slice().reverse().map(function(p){
       var nv=nvProp(p),vp=propValor(p);
@@ -907,13 +917,13 @@ PAGES.propostas=function(){
       '<td>'+(nv>=2?'<span class="fbadge frota">FROTA · '+nv+'</span>':'<span class="fbadge unico">1 VEÍCULO</span>')+'</td>'+
       '<td class="r"><b>'+(vp.total!=null?brl(vp.total):"—")+'</b>'+
         '<div class="mini" style="color:var(--green);font-weight:700">'+(vp.com!=null?("com. "+brl(vp.com)):"—")+'</div></td>'+
-      '<td><span class="badge '+propBad[p.status][0]+'">'+propBad[p.status][1]+'</span></td>'+
+      '<td><select class="stsel '+propBad[p.status][0]+'" title="Mudar a situação" onchange="setPropStatus(\''+p.id+'\',this.value)">'+
+        Object.keys(propBad).map(function(k){return '<option value="'+k+'"'+(p.status===k?" selected":"")+'>'+propBad[k][1]+'</option>';}).join("")+'</select></td>'+
       '<td><button class="act" onclick="abrirProposta(\''+p.id+'\')">Abrir</button>'+
       '<button class="act" onclick="verDoc(\''+p.id+'\')">📄 PDF</button>'+
-      (p.status==="enviada"?'<button class="act g" onclick="marcaProp(\''+p.id+'\',\'fechada\')">Fechou!</button>':'')+
       '<button class="act r" onclick="delProposta(\''+p.id+'\')">✕</button></td></tr>';}).join("")+
     '</tbody></table></div>';
-  var pend=lista.filter(function(p){return p.status==="rascunho"||p.status==="enviada";});
+  var pend=lista.filter(function(p){return p.status==="rascunho"||p.status==="enviada"||p.status==="aguardando";});
   var sv=0,sc=0,semPct=0;
   pend.forEach(function(p){var vp=propValor(p);if(vp.total!=null)sv+=vp.total;if(vp.com!=null)sc+=vp.com;else if(vp.total!=null)semPct++;});
   h+='<div class="propsum">'+
@@ -923,8 +933,32 @@ PAGES.propostas=function(){
     '<div class="pnote">🔒 Controle interno — nada disso aparece na proposta do cliente'+(semPct?' · <span style="color:var(--gold)">⚠️ '+semPct+' proposta(s) sem a % de comissão preenchida</span>':'')+'</div></div>';
   return h;
 };
-function marcaProp(id,st){var p=DB.propostas.find(function(x){return x.id===id;});p.status=st;save();go("propostas");
-  toast(st==="fechada"?"🎉 Proposta fechada — parabéns pela venda!":"Situação atualizada");}
+function setPropStatus(id,st){var p=DB.propostas.find(function(x){return x.id===id;});if(!p)return;
+  p.status=st;save();go("propostas");
+  toast(st==="fechada"?"🎉 Proposta fechada — parabéns pela venda!":"Situação atualizada: "+propBad[st][1]);}
+function normalizaZap(t){
+  var d=String(t||"").replace(/\D/g,"");
+  if(!d)return null;
+  if(d.charAt(0)==="0")d=d.slice(1);
+  if(d.slice(0,2)==="55"&&(d.length===12||d.length===13))return d;
+  if(d.length===10&&/[6-9]/.test(d.charAt(2)))d=d.slice(0,2)+"9"+d.slice(2);
+  if(d.length===10||d.length===11)return "55"+d;
+  return null;
+}
+function waLinkProposta(p){
+  var z=normalizaZap(p.cliente&&p.cliente.tel);if(!z)return null;
+  var nome=((p.cliente.nome||"").split(/\s+/)[0]||"");
+  var msg="Olá"+(nome?" "+nome:"")+"! Segue a proposta Nº "+(p.num||"")+" da "+(DB.corretora.nome||"corretora")+" com as opções de proteção do seu veículo. 📄 Qualquer dúvida, estou à disposição!";
+  return "https://wa.me/"+z+"?text="+encodeURIComponent(msg);
+}
+function waEnviarProposta(id){
+  var p=DB.propostas.find(function(x){return x.id===id;});if(!p)return;
+  var url=waLinkProposta(p);
+  if(!url){toast("⚠️ Preencha o WhatsApp do cliente na proposta pra enviar por aqui");return;}
+  if(p.status==="rascunho"){p.status="enviada";save();}
+  window.open(url,"_blank");
+  toast("📲 WhatsApp aberto com a mensagem pronta — anexe o PDF salvo (clipe 📎) e envie");
+}
 function delProposta(id){if(!confirm("Apagar esta proposta?"))return;
   DB.propostas=DB.propostas.filter(function(x){return x.id!==id;});save();go("propostas");toast("Proposta apagada");}
 function veicVazio(){return {marca:"",ano:"",modelo:"",placa:"",chassi:"",fipe:"",impl:""};}
@@ -949,7 +983,8 @@ PAGES.editProp=function(){
       DB.clientes.map(function(c){return '<option>'+esc(c.nome)+'</option>';}).join("")+'</datalist></div>'+
     '<div class="inp"><label>CNPJ / CPF</label><input id="pcDoc"></div></div>'+
     '<div class="fr3"><div class="inp"><label>Endereço</label><input id="pcEnd"></div><div class="inp"><label>CEP</label><input id="pcCep"></div>'+
-    '<div class="inp"><label>Tipo de carga</label><input id="pcCarga"></div></div></div>'+
+    '<div class="inp"><label>Tipo de carga</label><input id="pcCarga"></div></div>'+
+    '<div class="fr"><div class="inp"><label>📲 WhatsApp do cliente (pra enviar a proposta)</label><input id="pcTel" placeholder="(11) 90000-0000"></div><div></div></div></div>'+
     '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Veículos '+
     '<button class="btn sm" style="margin-left:auto" onclick="pAddVeic()">+ veículo</button></div>'+
     '<div class="scrollx"><table class="ed" id="pvTable"><thead><tr><th style="width:30px">#</th><th>Marca</th><th style="width:64px">Ano</th><th>Modelo</th><th style="width:96px">Placa</th><th>Chassi</th><th style="width:104px">FIPE R$</th><th style="width:116px">Implemento R$</th><th style="width:26px"></th></tr></thead><tbody></tbody></table></div></div>'+
@@ -968,14 +1003,14 @@ PAGES.editProp=function(){
     '<button class="btn primary" style="font-size:13.5px;padding:11px 18px" onclick="salvarProposta(true)">📄 Salvar e gerar PDF</button></div>';
 };
 function pegaCliente(){var n=$("pcNome").value;var c=DB.clientes.find(function(x){return x.nome===n;});if(!c)return;
-  $("pcDoc").value=c.doc||"";
+  $("pcDoc").value=c.doc||"";if(c.tel&&!$("pcTel").value)$("pcTel").value=c.tel;
   if(c.veiculos&&c.veiculos.length&&!P.veics.some(function(v){return v.placa||v.modelo;})){
     P.veics=c.veiculos.map(function(v){return {marca:v.marca||"",ano:v.ano||"",modelo:v.modelo||"",placa:v.placa||"",chassi:"",fipe:v.fipe||"",impl:""};});
     pDrawVeics();toast("Veículos do cadastro do cliente preenchidos automaticamente");}
   atualizaBadge();}
 function drawPropEditor(){
   $("pcNome").value=P.cliente.nome;$("pcDoc").value=P.cliente.doc;$("pcEnd").value=P.cliente.end;
-  $("pcCep").value=P.cliente.cep;$("pcCarga").value=P.cliente.carga;
+  $("pcCep").value=P.cliente.cep;$("pcCarga").value=P.cliente.carga;$("pcTel").value=P.cliente.tel||"";
   $("pVal").value=P.validadeDias;$("pNum").value=P.num;$("pData").value=fmtData(P.data);$("pObs").value=P.obs;
   pDrawVeics();pDrawOps();atualizaBadge();
 }
@@ -1050,7 +1085,7 @@ function pDrawOps(){
       g.appendChild(d);});});
 }
 function colheProposta(){
-  P.cliente={nome:$("pcNome").value.trim(),doc:$("pcDoc").value.trim(),end:$("pcEnd").value.trim(),cep:$("pcCep").value.trim(),carga:$("pcCarga").value.trim()};
+  P.cliente={nome:$("pcNome").value.trim(),doc:$("pcDoc").value.trim(),end:$("pcEnd").value.trim(),cep:$("pcCep").value.trim(),carga:$("pcCarga").value.trim(),tel:$("pcTel").value.trim()};
   P.validadeDias=parseInt($("pVal").value)||7;P.num=$("pNum").value.trim();
   P.data=parseDataBR($("pData").value)||hojeISO();P.obs=$("pObs").value.trim();
   var v=new Date(P.data+"T00:00:00");v.setDate(v.getDate()+P.validadeDias);
@@ -1096,10 +1131,12 @@ function renderDoc(p){
   var lgHtml=LOGO_LCN?'<div class="lg lgimg"><img src="'+LOGO_LCN+'" alt="'+esc(coNome)+'"></div>':'<div class="lg">'+esc(lg)+'</div>';
   var nvList=p.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;});
   var frota=nvList.length>=2;
+  var temZap=!!waLinkProposta(p);
   var h='<div class="po-doc"><div class="po-bar">'+
-    '<span style="margin-right:auto;align-self:center;font-size:12px;color:#6b7386">Confira e depois imprima — na janela de impressão escolha <b>Salvar como PDF</b></span>'+
+    '<span style="margin-right:auto;align-self:center;font-size:12px;color:#6b7386">1º salve o PDF, depois envie'+(temZap?' — o botão verde abre o WhatsApp do cliente':'')+'</span>'+
     '<button class="btn" onclick="fecharDoc()">Fechar</button>'+
-    '<button class="btn primary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>';
+    '<button class="btn primary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>'+
+    (temZap?'<button class="btn" style="background:#25D366;border-color:#25D366;color:#fff;font-weight:700" onclick="waEnviarProposta(\''+p.id+'\')">📲 Enviar no WhatsApp</button>':'')+'</div>';
   h+='<div class="dochead">'+lgHtml+
     '<div><div class="t1">'+esc(coNome)+'</div><div class="t2">Proposta de Proteção Veicular'+(frota?' — Frota':'')+'</div></div>'+
     '<div class="meta">'+(p.num?('Proposta <b>Nº '+esc(p.num)+'</b><br>'):'')+'Data: <b>'+fmtData(p.data)+'</b><br>Validade: <b>'+p.validadeDias+' dias</b></div></div>';
@@ -1638,6 +1675,38 @@ function selftest(){
     var inpC=document.querySelector('#pOpsGrid input.opval[data-k="comissaoPct"]');
     inpC.value="5";inpC.dispatchEvent(new Event("input"));
     T("comissão: digitar salva",P.ops[0].comissaoPct==="5");
+    // novos status + filtro + whatsapp
+    DB.propostas.push({id:"pd",num:"2026-104",data:hojeISO(),validadeDias:7,status:"aguardando",obs:"",
+      cliente:{nome:"Aguarda Um",tel:"(11) 8214-6633"},veics:[],cobs:[],ops:[{nome:"PREV",total:"5000",comissaoPct:"5",destaque:false}]});
+    propFiltro="todas";propSit="todas";
+    pgP=PAGES.propostas();
+    T("status: select na lista",pgP.indexOf('class="stsel')>=0&&pgP.indexOf("Aguardando retorno")>=0);
+    T("status: aguardando conta como em aberto",pgP.indexOf('class="v">3<')>=0);
+    T("status: chips de filtro",pgP.indexOf("Fechada (1)")>=0&&pgP.indexOf("Aguardando retorno (1)")>=0);
+    propSit="fechada";pgP=PAGES.propostas();
+    T("status: filtro mostra só a situação",pgP.indexOf("2026-103")>=0&&pgP.indexOf("2026-101")<0);
+    propSit="todas";
+    setPropStatus("pa","perdida");
+    T("status: mudar pelo select salva",DB.propostas.find(function(x){return x.id==="pa";}).status==="perdida");
+    DB.propostas.push({id:"pm",num:"2026-105",data:hojeISO(),validadeDias:7,status:"recusada",obs:"",cliente:{nome:"Velha"},veics:[],cobs:[],ops:[]});
+    migraStatusPropostas();
+    T("status: migração recusada→perdida",DB.propostas.find(function(x){return x.id==="pm";}).status==="perdida");
+    T("zap: celular 10 díg ganha o 9",normalizaZap("(11) 8214-6633")==="5511982146633");
+    T("zap: celular 11 díg",normalizaZap("(11) 98214-6633")==="5511982146633");
+    T("zap: fixo não ganha 9",normalizaZap("(11) 4335-4955")==="551143354955");
+    T("zap: já com 55 passa direto",normalizaZap("5511982146633")==="5511982146633");
+    T("zap: vazio é null",normalizaZap("")===null&&normalizaZap("abc")===null);
+    var pd=DB.propostas.find(function(x){return x.id==="pd";});
+    var wl=waLinkProposta(pd);
+    T("zap: link da proposta",wl.indexOf("wa.me/5511982146633")>=0&&wl.indexOf("2026-104")>=0);
+    renderDoc(pd);
+    T("zap: botão no documento",$("propOverlay").innerHTML.indexOf("Enviar no WhatsApp")>=0);
+    renderDoc(DB.propostas.find(function(x){return x.id==="pm";}));
+    T("zap: sem telefone não tem botão",$("propOverlay").innerHTML.indexOf("Enviar no WhatsApp")<0);
+    novaProposta("unico");
+    T("editor: campo WhatsApp",!!$("pcTel"));
+    $("pcNome").value="Cliente X";$("pcTel").value="(11) 97777-0000";colheProposta();
+    T("editor: WhatsApp vai pra proposta",P.cliente.tel==="(11) 97777-0000");
     // total do financeiro
     DB.fin=[{id:"f1",tipo:"entrada",valor:1000,data:"2026-01-15",desc:"EJan"},{id:"f2",tipo:"saida",valor:200,data:"2026-01-20",desc:"SJan"}];
     FINF={de:"2026-01-01",ate:"2026-01-31",preset:"",tipo:"todos"};
@@ -1676,7 +1745,7 @@ function seedDemo(){
   function op(n,v,t,e,mx,d){return {nome:n,vals:JSON.parse(JSON.stringify(v)),total:t,entrada:e||"",maxParc:mx,nota:"",destaque:!!d};}
   DB.propostas=[
    {id:uid(),num:"2026-001",data:dOff(-1),validadeDias:7,validadeAte:dOff(6),status:"enviada",obs:"Valores sujeitos a vistoria e análise cadastral.",
-    cliente:{nome:"TR GIMENEZ LOGISTICA E TRANSPORTES LTDA",doc:"35.158.499/0001-44",end:"",cep:"",carga:"Carga seca"},
+    cliente:{nome:"TR GIMENEZ LOGISTICA E TRANSPORTES LTDA",doc:"35.158.499/0001-44",end:"",cep:"",carga:"Carga seca",tel:"(11) 98214-6633"},
     veics:[{marca:"MERC. BENZ",ano:"2004",modelo:"1318 2 PORTAS DIESEL",placa:"BXF-6776",chassi:"",fipe:"98610",impl:"50000"}],
     cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"10940,52","",12),op("COOPERVESC",coop,"12828,75","",11),op("COOP. TRANSPOSEG",tran,"10337,76","",12,true)]},
    {id:uid(),num:"2026-002",data:dOff(-3),validadeDias:7,validadeAte:dOff(4),status:"rascunho",obs:"",
@@ -1690,7 +1759,7 @@ function seedDemo(){
     cliente:{nome:"TRANSPORTADORA HORIZONTE AZUL",doc:"61.448.007/0001-92",end:"",cep:"",carga:""},
     veics:[{marca:"SCANIA",ano:"2021",modelo:"R500 6X4",placa:"FEI-1D31",chassi:"",fipe:"612400",impl:""}],
     cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"49800,00","",12,true),op("COOPERVESC",coop,"53100,00","",11)]},
-   {id:uid(),num:"2026-004",data:dOff(-20),validadeDias:7,validadeAte:dOff(-13),status:"recusada",obs:"",
+   {id:uid(),num:"2026-004",data:dOff(-20),validadeDias:7,validadeAte:dOff(-13),status:"perdida",obs:"",
     cliente:{nome:"CEREALISTA CAMPO ALEGRE",doc:"47.660.281/0001-55",end:"",cep:"",carga:"Grãos"},
     veics:[{marca:"VOLKSWAGEN",ano:"2010",modelo:"24.250 E 3 EIXOS",placa:"EMO-1618",chassi:"",fipe:"189827",impl:""}],
     cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"27120,00","",12)]}];
