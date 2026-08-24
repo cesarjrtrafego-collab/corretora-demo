@@ -546,11 +546,15 @@ PAGES.inicio=function(){
 
 /* =================== CLIENTES =================== */
 var cliBusca="";
+var cliSit="todos";
 PAGES.clientes=function(){
-  var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+  var h='<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">'+
     '<input class="btn" style="min-width:230px;cursor:text" placeholder="🔎 Buscar por nome, placa, documento..." value="'+esc(cliBusca)+'" oninput="cliBusca=this.value;filtraCli()">'+
     '<button class="btn primary" onclick="editCliente()">+ Novo cliente</button>'+
     '<button class="btn" onclick="abrirImport()">⬆ Importar planilha</button></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+    [["todos","Todos",DB.clientes.length]].concat(Object.keys(STATUS).map(function(k){return [k,STATUS[k][1],DB.clientes.filter(function(c){return c.status===k;}).length];}))
+      .map(function(t){return '<button class="fpre'+(cliSit===t[0]?" on":"")+'" onclick="cliSit=\''+t[0]+'\';go(\'clientes\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>'+
     '<div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Contato</th><th>Veículo(s)</th><th>Operadora</th><th>Mensalidade</th><th>Renovação</th><th>Situação</th><th></th></tr></thead><tbody id="cliBody"></tbody></table></div>'+
     '<div class="mini" style="margin-top:10px">💡 A <b>situação</b> (Em dia / Atrasado / Inadimplente) aparece também na hora de gerar proposta e no Início.</div>';
   setTimeout(filtraCli,0);return h;
@@ -558,10 +562,11 @@ PAGES.clientes=function(){
 function filtraCli(){
   var q=(cliBusca||"").toLowerCase();
   var list=DB.clientes.filter(function(c){
+    if(cliSit!=="todos"&&c.status!==cliSit)return false;
     if(!q)return true;
     return [c.nome,c.doc,c.tel,c.operadora,(c.veiculos||[]).map(function(v){return v.placa+" "+v.modelo;}).join(" ")].join(" ").toLowerCase().indexOf(q)>=0;});
   var b=$("cliBody");if(!b)return;
-  if(!list.length){b.innerHTML='<tr><td colspan="8" style="color:#9aa1b3">'+(DB.clientes.length?"Nenhum cliente encontrado nessa busca.":"Nenhum cliente ainda — use <b>Importar planilha</b> ou <b>+ Novo cliente</b>.")+'</td></tr>';return;}
+  if(!list.length){b.innerHTML='<tr><td colspan="8" style="color:#9aa1b3">'+(DB.clientes.length?"Nenhum cliente nessa busca/situação — mude o filtro acima.":"Nenhum cliente ainda — use <b>Importar planilha</b> ou <b>+ Novo cliente</b>.")+'</td></tr>';return;}
   b.innerHTML=list.map(function(c){
     var d=diasAte(c.renovacao);
     var ren=c.renovacao?(fmtData(c.renovacao)+(d!=null&&d>=0&&d<=30?' <span class="badge b-wait">'+d+'d</span>':(d!=null&&d<0?' <span class="badge b-red">venceu</span>':''))):"—";
@@ -1017,22 +1022,49 @@ function saveAndamento(id){
 
 /* =================== FINANCEIRO =================== */
 var finTipos={entrada:["b-ok","Entrada"],saida:["b-red","Saída"],comissao:["b-blue","Comissão"]};
+var FINF={de:null,ate:null,preset:"mes",tipo:"todos"};
+function finFDefault(){var h=hojeISO();FINF.de=h.slice(0,7)+"-01";FINF.ate=h;FINF.preset="mes";}
+function finPreset(pp){
+  if(pp==="mes")finFDefault();
+  else if(pp==="anterior"){var d=new Date();d.setDate(1);d.setDate(0);var fim=isoDe(d);FINF.de=fim.slice(0,7)+"-01";FINF.ate=fim;FINF.preset="anterior";}
+  else if(pp==="ano"){FINF.de=hojeISO().slice(0,4)+"-01-01";FINF.ate=hojeISO();FINF.preset="ano";}
+  else{var min=null;DB.fin.forEach(function(l){if(l.data&&(!min||l.data<min))min=l.data;});
+    FINF.de=min||hojeISO().slice(0,7)+"-01";FINF.ate=hojeISO();FINF.preset="tudo";}
+  go("fin");
+}
 PAGES.fin=function(){
-  var mes=hojeISO().slice(0,7);
-  var doMes=DB.fin.filter(function(l){return (l.data||"").slice(0,7)===mes;});
-  var ent=doMes.filter(function(l){return l.tipo==="entrada";}).reduce(function(a,l){return a+l.valor;},0);
-  var sai=doMes.filter(function(l){return l.tipo==="saida";}).reduce(function(a,l){return a+l.valor;},0);
-  var com=doMes.filter(function(l){return l.tipo==="comissao";}).reduce(function(a,l){return a+l.valor;},0);
-  var h='<div class="grid kpis">'+
-    '<div class="kpi dark"><div class="lbl">✅ Entradas do mês</div><div class="val">'+brl0(ent)+'</div><div class="foot">'+fmtMes(mes)+'</div></div>'+
-    '<div class="kpi"><div class="lbl">🏆 Comissões do mês</div><div class="val">'+brl0(com)+'</div><div class="foot">recebidas das operadoras</div></div>'+
-    '<div class="kpi"><div class="lbl">📤 Saídas do mês</div><div class="val">'+brl0(sai)+'</div><div class="foot">despesas</div></div>'+
+  if(!FINF.de||!FINF.ate)finFDefault();
+  var doPer=DB.fin.filter(function(l){return l.data&&l.data>=FINF.de&&l.data<=FINF.ate;});
+  var ent=doPer.filter(function(l){return l.tipo==="entrada";}).reduce(function(a,l){return a+l.valor;},0);
+  var sai=doPer.filter(function(l){return l.tipo==="saida";}).reduce(function(a,l){return a+l.valor;},0);
+  var com=doPer.filter(function(l){return l.tipo==="comissao";}).reduce(function(a,l){return a+l.valor;},0);
+  var h='<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">'+
+    '<b style="font-size:12.5px;color:var(--navy)">📅 Período:</b>'+
+    '<input type="date" class="fdate" value="'+FINF.de+'" onchange="FINF.de=this.value;FINF.preset=\'\';go(\'fin\')">'+
+    '<span class="mini">até</span>'+
+    '<input type="date" class="fdate" value="'+FINF.ate+'" onchange="FINF.ate=this.value;FINF.preset=\'\';go(\'fin\')">'+
+    '<span style="flex:1"></span>'+
+    [["mes","Este mês"],["anterior","Mês passado"],["ano","Este ano"],["tudo","Tudo"]].map(function(pr){
+      return '<button class="fpre'+(FINF.preset===pr[0]?" on":"")+'" onclick="finPreset(\''+pr[0]+'\')">'+pr[1]+'</button>';}).join("")+
+    '</div>';
+  h+='<div class="grid kpis">'+
+    '<div class="kpi dark"><div class="lbl">✅ Entradas do período</div><div class="val">'+brl0(ent)+'</div><div class="foot">'+fmtData(FINF.de)+' a '+fmtData(FINF.ate)+'</div></div>'+
+    '<div class="kpi"><div class="lbl">🏆 Comissões do período</div><div class="val">'+brl0(com)+'</div><div class="foot">recebidas das operadoras</div></div>'+
+    '<div class="kpi"><div class="lbl">📤 Saídas do período</div><div class="val">'+brl0(sai)+'</div><div class="foot">despesas</div></div>'+
     '<div class="kpi"><div class="lbl">💰 Resultado</div><div class="val '+((ent+com-sai)>=0?"pos":"neg")+'">'+brl0(ent+com-sai)+'</div><div class="foot">entradas + comissões − saídas</div></div></div>'+
     '<div style="display:flex;gap:10px;margin:18px 0 8px;flex-wrap:wrap"><button class="btn primary" onclick="novoLanc()">➕ Novo lançamento</button>'+
     '<button class="btn" onclick="abrirImportFin()">⬆ Importar planilha (histórico)</button></div>';
-  if(!DB.fin.length)return h+'<div class="card" style="color:var(--muted)">Nenhum lançamento ainda. Registre aqui <b>tudo que entra e sai</b> — mensalidades recebidas, comissões das operadoras e despesas.</div>';
+  if(!DB.fin.length)return h+'<div class="card" style="color:var(--muted)">Nenhum lançamento ainda. Registre aqui <b>tudo que entra e sai</b> — mensalidades recebidas, comissões das operadoras e despesas.'+
+    '<div style="margin-top:12px"><button class="btn primary" onclick="seedFinExemplo()">🎬 Carregar lançamentos de exemplo</button>'+
+    '<div class="mini" style="margin-top:7px">Dados fictícios de 5 meses, só pra ver como fica — depois é só apagar um a um (✕) ou zerar tudo em Configurações.</div></div></div>';
+  var nEnt=doPer.filter(function(l){return l.tipo==="entrada";}).length,nSai=doPer.filter(function(l){return l.tipo==="saida";}).length,nCom=doPer.filter(function(l){return l.tipo==="comissao";}).length;
+  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+    [["todos","Todos",doPer.length],["entrada","✅ Entradas",nEnt],["comissao","🏆 Comissões",nCom],["saida","📤 Saídas",nSai]].map(function(t){
+      return '<button class="fpre'+(FINF.tipo===t[0]?" on":"")+'" onclick="FINF.tipo=\''+t[0]+'\';go(\'fin\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
+  var lista=doPer.filter(function(l){return FINF.tipo==="todos"||l.tipo===FINF.tipo;});
+  if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhum lançamento <b>nesse período/filtro</b> — ajuste as datas ou o tipo acima (ex.: clique em <b>Tudo</b>).</div>';
   h+='<div class="tbl-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="r">Valor</th><th></th></tr></thead><tbody>'+
-    DB.fin.slice().sort(function(a,b){return b.data<a.data?-1:1;}).map(function(l){
+    lista.slice().sort(function(a,b){return b.data<a.data?-1:1;}).map(function(l){
       return '<tr><td>'+fmtData(l.data)+'</td><td>'+esc(l.desc)+'</td><td><span class="badge '+finTipos[l.tipo][0]+'">'+finTipos[l.tipo][1]+'</span></td>'+
       '<td class="r '+(l.tipo==="saida"?"neg":"pos")+'">'+(l.tipo==="saida"?"− ":"+ ")+brl(l.valor)+'</td>'+
       '<td><button class="act r" onclick="delLanc(\''+l.id+'\')">✕</button></td></tr>';}).join("")+
@@ -1336,6 +1368,27 @@ function selftest(){
     T("demo: sem entrada NÃO tem linha 1x",$("propOverlay").innerHTML.indexOf("<td>1x</td>")<0);
     renderDoc(DB.propostas[1]);
     T("demo: frota Coopervesc = Entrada + 11x de 5.365,47",$("propOverlay").innerHTML.indexOf("Entrada + 11x de R$ 5.365,47")>=0);
+    // filtros do financeiro
+    DB.fin=[{id:"t1",tipo:"entrada",valor:1000,data:"2026-01-15",desc:"Mensalidade JanTeste"},
+      {id:"t2",tipo:"saida",valor:200,data:"2026-01-20",desc:"Luz JanTeste"},
+      {id:"t3",tipo:"comissao",valor:300,data:hojeISO(),desc:"Comissao AgoTeste"}];
+    FINF={de:"2026-01-01",ate:"2026-01-31",preset:"",tipo:"todos"};
+    var pgFin=PAGES.fin();
+    T("fin: filtro de período mostra só o período",pgFin.indexOf("JanTeste")>=0&&pgFin.indexOf("AgoTeste")<0);
+    T("fin: KPI do período",pgFin.indexOf(brl0(1000))>=0&&pgFin.indexOf(brl0(200))>=0);
+    FINF.tipo="saida";pgFin=PAGES.fin();
+    T("fin: filtro por tipo (só saídas)",pgFin.indexOf("Luz JanTeste")>=0&&pgFin.indexOf("Mensalidade JanTeste")<0);
+    FINF={de:null,ate:null,preset:"mes",tipo:"todos"};
+    DB.fin=[];seedFinExemplo();
+    T("fin: botão de exemplo carrega 19",DB.fin.length===19);
+    T("fin: exemplo é idempotente",(seedFinExemplo(),DB.fin.length===19));
+    // filtro de situação em clientes
+    go("clientes");cliBusca="";cliSit="inadimplente";filtraCli();
+    var cb=$("cliBody").innerHTML;
+    T("clientes: filtro situação mostra inadimplente",cb.indexOf("MARCOS ANTONIO")>=0);
+    T("clientes: filtro situação esconde os demais",cb.indexOf("SÃO JORGE")<0);
+    cliSit="todos";filtraCli();
+    T("clientes: voltar pra Todos",$("cliBody").innerHTML.indexOf("SÃO JORGE")>=0);
   }catch(e){R.push("FAIL :: exceção: "+e.message);}
   var div=document.createElement("pre");div.id="selftestOut";div.textContent=R.join("\n");
   document.body.appendChild(div);
@@ -1389,16 +1442,20 @@ function seedDemo(){
    {id:uid(),cliente:"JOSÉ CARLOS DA SILVA FRETES",placa:"QAB-1F22",tipo:"Colisão",data:dOff(-9),ultAtual:dOff(-8),status:"andamento",updates:[{data:dOff(-9),txt:"Cliente ligou: colisão traseira na Dutra, sem feridos. Fotos recebidas por WhatsApp."},{data:dOff(-8),txt:"Aberto na Transposeg, protocolo 55821. Aguardando vistoria."}]},
    {id:uid(),cliente:"MARCOS ANTONIO PEREIRA",placa:"PXE-7H09",tipo:"Vidro / Para-brisa",data:dOff(-2),ultAtual:dOff(-2),status:"aberto",updates:[{data:dOff(-2),txt:"Para-brisa trincado por pedra. Cliente pediu orientação sobre a franquia."}]},
    {id:uid(),cliente:"LOGÍSTICA BOA VIAGEM LTDA",placa:"GAK-3F21",tipo:"Pane / Guincho",data:dOff(-30),ultAtual:dOff(-26),status:"resolvido",updates:[{data:dOff(-30),txt:"Pane elétrica na BR-116. Guincho acionado pela Prevenir."},{data:dOff(-26),txt:"Veículo entregue na oficina e liberado. Cliente satisfeito."}]}];
-  var fin=[];
-  var base=[[-150,"Comissão Prevenir — abril","comissao",2380],[-140,"Mensalidades recebidas — abril","entrada",18900],[-135,"Aluguel escritório","saida",1800],
-    [-120,"Comissão Coopervesc — maio","comissao",1960],[-110,"Mensalidades recebidas — maio","entrada",19650],[-105,"Telefone + internet","saida",420],
-    [-90,"Comissão Prevenir — junho","comissao",2720],[-80,"Mensalidades recebidas — junho","entrada",20300],[-75,"Aluguel escritório","saida",1800],
-    [-60,"Comissão Transposeg — julho","comissao",2140],[-50,"Mensalidades recebidas — julho","entrada",21150],[-45,"Contador","saida",650],
-    [-28,"Comissão Prevenir — agosto","comissao",2890],[-18,"Mensalidades recebidas — 1ª quinzena","entrada",11200],[-15,"Aluguel escritório","saida",1800],
-    [-6,"Mensalidade — Horizonte Azul","entrada",4150],[-4,"Mensalidade — Expresso Vale do Ribeira","entrada",3120],[-2,"Mensalidade — Boa Viagem","entrada",2890],[-1,"Comissão Coopervesc — parcial","comissao",640]];
-  base.forEach(function(b){fin.push({id:uid(),tipo:b[2],valor:b[3],data:dOff(b[0]),desc:b[1]});});
-  DB.fin=fin;DB.ultimoBackup=dOff(-3);
+  DB.fin=finExemploLista();DB.ultimoBackup=dOff(-3);
   save();
+}
+var FIN_EXEMPLO=[[-150,"Comissão Prevenir — abril","comissao",2380],[-140,"Mensalidades recebidas — abril","entrada",18900],[-135,"Aluguel escritório","saida",1800],
+  [-120,"Comissão Coopervesc — maio","comissao",1960],[-110,"Mensalidades recebidas — maio","entrada",19650],[-105,"Telefone + internet","saida",420],
+  [-90,"Comissão Prevenir — junho","comissao",2720],[-80,"Mensalidades recebidas — junho","entrada",20300],[-75,"Aluguel escritório","saida",1800],
+  [-60,"Comissão Transposeg — julho","comissao",2140],[-50,"Mensalidades recebidas — julho","entrada",21150],[-45,"Contador","saida",650],
+  [-28,"Comissão Prevenir — agosto","comissao",2890],[-18,"Mensalidades recebidas — 1ª quinzena","entrada",11200],[-15,"Aluguel escritório","saida",1800],
+  [-6,"Mensalidade — Horizonte Azul","entrada",4150],[-4,"Mensalidade — Expresso Vale do Ribeira","entrada",3120],[-2,"Mensalidade — Boa Viagem","entrada",2890],[-1,"Comissão Coopervesc — parcial","comissao",640]];
+function finExemploLista(){return FIN_EXEMPLO.map(function(b){return {id:uid(),tipo:b[2],valor:b[3],data:dOff(b[0]),desc:b[1]};});}
+function seedFinExemplo(){
+  if(DB.fin.length){toast("Já existem lançamentos — o exemplo só entra com o Financeiro vazio");return;}
+  DB.fin=finExemploLista();save();finPreset("tudo");
+  toast("🎬 19 lançamentos fictícios carregados (5 meses) — dados de exemplo, dá pra apagar quando quiser");
 }
 
 /* =================== INIT =================== */
