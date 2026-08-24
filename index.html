@@ -69,6 +69,8 @@
   .fpre:hover{border-color:var(--gold);color:var(--gold-d)}
   .fpre.on{background:var(--navy);border-color:var(--navy);color:var(--gold)}
   .stsel{border:none;border-radius:20px;padding:4px 9px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
+  .fsel{border:1px solid var(--line);background:#fff;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:20px;font-family:inherit;cursor:pointer}
+  .fsel.on{background:var(--navy);border-color:var(--navy);color:var(--gold)}
   .dash2{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;align-items:start}
   @media(max-width:940px){.dash2{grid-template-columns:1fr}}
   .pend{display:flex;flex-direction:column;gap:8px}
@@ -895,17 +897,18 @@ PAGES.propostas=function(){
   if(!DB.propostas.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta ainda. Escolha o modelo acima: <b>1 veículo</b> (comum) ou <b>Frota</b> (a partir de 2 veículos). Você preenche uma vez, o sistema calcula as parcelas e gera o PDF comparativo com as operadoras lado a lado.</div>';
   var unicos=DB.propostas.filter(function(p){return nvProp(p)<2;}).length;
   var frotas=DB.propostas.length-unicos;
-  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
-    [["todas","Todas",DB.propostas.length],["unico","1 veículo",unicos],["frota","Frota",frotas]].map(function(t){
-      return '<button class="fpre'+(propFiltro===t[0]?" on":"")+'" onclick="propFiltro=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
   var listaT=DB.propostas.filter(function(p){
     if(propFiltro==="unico")return nvProp(p)<2;
     if(propFiltro==="frota")return nvProp(p)>=2;
     return true;});
+  var stSel='<select class="fsel'+(propSit!=="todas"?" on":"")+'" title="Filtrar por situação" onchange="propSit=this.value;go(\'propostas\')">'+
+    [["todas","Todas as situações",listaT.length]].concat(Object.keys(propBad).map(function(k){return [k,propBad[k][1],listaT.filter(function(p){return p.status===k;}).length];}))
+      .map(function(t){return '<option value="'+t[0]+'"'+(propSit===t[0]?" selected":"")+'>'+t[1]+' ('+t[2]+')</option>';}).join("")+'</select>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">'+
+    [["todas","Todas",DB.propostas.length],["unico","1 veículo",unicos],["frota","Frota",frotas]].map(function(t){
+      return '<button class="fpre'+(propFiltro===t[0]?" on":"")+'" onclick="propFiltro=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+
+    '<span style="flex:1"></span>'+stSel+'</div>';
   if(!listaT.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
-  h+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
-    [["todas","Todas",listaT.length]].concat(Object.keys(propBad).map(function(k){return [k,propBad[k][1],listaT.filter(function(p){return p.status===k;}).length];}))
-      .map(function(t){return '<button class="fpre'+(propSit===t[0]?" on":"")+'" onclick="propSit=\''+t[0]+'\';go(\'propostas\')">'+t[1]+' ('+t[2]+')</button>';}).join("")+'</div>';
   var lista=propSit==="todas"?listaT:listaT.filter(function(p){return p.status===propSit;});
   if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta <b>nessa situação</b> — mude o filtro acima.</div>';
   h+='<div class="tbl-wrap"><table class="fit"><thead><tr><th>Nº / Data</th><th>Cliente / Operadoras</th><th>Tipo</th><th class="r">Valor / comissão</th><th>Situação</th><th></th></tr></thead><tbody>'+
@@ -947,8 +950,7 @@ function normalizaZap(t){
 }
 function waLinkProposta(p){
   var z=normalizaZap(p.cliente&&p.cliente.tel);if(!z)return null;
-  var nome=((p.cliente.nome||"").split(/\s+/)[0]||"");
-  var msg="Olá"+(nome?" "+nome:"")+"! Segue a proposta Nº "+(p.num||"")+" da "+(DB.corretora.nome||"corretora")+" com as opções de proteção do seu veículo. 📄 Qualquer dúvida, estou à disposição!";
+  var msg="Olá! Vou te passar abaixo a proposta Nº "+(p.num||"")+" da "+(DB.corretora.nome||"corretora")+" com as opções de proteção do seu veículo. Qualquer dúvida, estou à disposição!";
   return "https://wa.me/"+z+"?text="+encodeURIComponent(msg);
 }
 function waEnviarProposta(id){
@@ -1682,7 +1684,7 @@ function selftest(){
     pgP=PAGES.propostas();
     T("status: select na lista",pgP.indexOf('class="stsel')>=0&&pgP.indexOf("Aguardando retorno")>=0);
     T("status: aguardando conta como em aberto",pgP.indexOf('class="v">3<')>=0);
-    T("status: chips de filtro",pgP.indexOf("Fechada (1)")>=0&&pgP.indexOf("Aguardando retorno (1)")>=0);
+    T("status: filtro em lista suspensa",pgP.indexOf('class="fsel')>=0&&pgP.indexOf("Fechada (1)")>=0&&pgP.indexOf("Aguardando retorno (1)")>=0);
     propSit="fechada";pgP=PAGES.propostas();
     T("status: filtro mostra só a situação",pgP.indexOf("2026-103")>=0&&pgP.indexOf("2026-101")<0);
     propSit="todas";
@@ -1699,6 +1701,7 @@ function selftest(){
     var pd=DB.propostas.find(function(x){return x.id==="pd";});
     var wl=waLinkProposta(pd);
     T("zap: link da proposta",wl.indexOf("wa.me/5511982146633")>=0&&wl.indexOf("2026-104")>=0);
+    T("zap: mensagem nova",decodeURIComponent(wl).indexOf("Vou te passar abaixo a proposta")>=0);
     renderDoc(pd);
     T("zap: botão no documento",$("propOverlay").innerHTML.indexOf("Enviar no WhatsApp")>=0);
     renderDoc(DB.propostas.find(function(x){return x.id==="pm";}));
