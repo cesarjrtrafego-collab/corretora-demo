@@ -171,6 +171,19 @@
   .fbadge{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.4px}
   .fbadge.frota{background:var(--navy);color:var(--gold)}
   .fbadge.unico{background:#e7ecf5;color:var(--muted)}
+  table.fit{min-width:0}
+  table.fit tbody td{white-space:normal}
+  table.fit tbody td:last-child{white-space:nowrap}
+  .propsum{margin-top:16px;background:linear-gradient(135deg,var(--navy),var(--navy3));border-radius:var(--radius);padding:20px 22px 13px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;color:#fff;box-shadow:var(--shadow)}
+  .propsum .ps{display:flex;gap:12px;align-items:center;border-right:1px solid rgba(255,255,255,.12);padding-right:12px}
+  .propsum .ps:nth-child(3){border-right:0}
+  .propsum .ic{width:46px;height:46px;border-radius:13px;background:rgba(241,188,94,.16);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+  .propsum .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#9fb0cf;font-weight:700}
+  .propsum .v{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+  .propsum .ps.gold .v{color:var(--gold)}
+  .propsum .f{font-size:11px;color:#aab1c8;margin-top:1px}
+  .propsum .pnote{grid-column:1/-1;border-top:1px solid rgba(255,255,255,.12);padding-top:9px;font-size:11.5px;color:#9fb0cf}
+  @media(max-width:860px){.propsum{grid-template-columns:1fr}.propsum .ps{border-right:0;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:11px}.propsum .ps:nth-child(3){border-bottom:0}}
 
   /* ===== documento proposta (overlay + print) ===== */
   #propOverlay{display:none;position:fixed;inset:0;background:rgba(10,13,22,.6);z-index:180;overflow:auto;padding:24px 14px}
@@ -857,7 +870,15 @@ function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.mod
 function propValor(p){
   var comTotal=(p.ops||[]).filter(function(o){return num(o.total)!=null;});
   if(!comTotal.length)return {total:null,com:null};
-  var o=comTotal.find(function(x){return x.destaque;})||comTotal[0];
+  var o=comTotal.find(function(x){return x.destaque;});
+  if(!o){
+    var comPct=comTotal.filter(function(x){return num(x.comissaoPct)!=null;});
+    if(comPct.length){ /* sem ⭐: vale a MENOR comissão (estimativa conservadora) */
+      o=comPct[0];
+      comPct.forEach(function(x){
+        if(num(x.total)*num(x.comissaoPct)<num(o.total)*num(o.comissaoPct))o=x;});
+    }else o=comTotal[0];
+  }
   var t=num(o.total),pct=num(o.comissaoPct);
   return {total:t,com:(pct!=null&&t!=null)?Math.round(t*pct)/100:null};
 }
@@ -877,15 +898,15 @@ PAGES.propostas=function(){
     if(propFiltro==="frota")return nvProp(p)>=2;
     return true;});
   if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
-  h+='<div class="tbl-wrap"><table><thead><tr><th>Nº</th><th>Cliente</th><th>Tipo</th><th>Operadoras</th><th class="r">Valor</th><th class="r">Comissão</th><th>Data</th><th>Situação</th><th></th></tr></thead><tbody>'+
+  h+='<div class="tbl-wrap"><table class="fit"><thead><tr><th>Nº / Data</th><th>Cliente / Operadoras</th><th>Tipo</th><th class="r">Valor / comissão</th><th>Situação</th><th></th></tr></thead><tbody>'+
     lista.slice().reverse().map(function(p){
       var nv=nvProp(p),vp=propValor(p);
-      return '<tr><td><b>'+esc(p.num)+'</b></td><td class="cli"><div class="av">'+ini(p.cliente.nome)+'</div>'+esc(p.cliente.nome||"—")+'</td>'+
+      return '<tr><td><b>'+esc(p.num)+'</b><div class="mini">'+fmtData(p.data)+'</div></td>'+
+      '<td class="cli"><div class="av">'+ini(p.cliente.nome)+'</div><div>'+esc(p.cliente.nome||"—")+
+        '<div class="mini">'+esc((p.ops||[]).map(function(o){return o.nome;}).filter(Boolean).join(" · ")||"—")+'</div></div></td>'+
       '<td>'+(nv>=2?'<span class="fbadge frota">FROTA · '+nv+'</span>':'<span class="fbadge unico">1 VEÍCULO</span>')+'</td>'+
-      '<td>'+esc((p.ops||[]).map(function(o){return o.nome;}).filter(Boolean).join(", ")||"—")+'</td>'+
-      '<td class="r">'+(vp.total!=null?brl(vp.total):"—")+'</td>'+
-      '<td class="r '+(vp.com!=null?"pos":"")+'">'+(vp.com!=null?brl(vp.com):"—")+'</td>'+
-      '<td>'+fmtData(p.data)+'</td>'+
+      '<td class="r"><b>'+(vp.total!=null?brl(vp.total):"—")+'</b>'+
+        '<div class="mini" style="color:var(--green);font-weight:700">'+(vp.com!=null?("com. "+brl(vp.com)):"—")+'</div></td>'+
       '<td><span class="badge '+propBad[p.status][0]+'">'+propBad[p.status][1]+'</span></td>'+
       '<td><button class="act" onclick="abrirProposta(\''+p.id+'\')">Abrir</button>'+
       '<button class="act" onclick="verDoc(\''+p.id+'\')">📄 PDF</button>'+
@@ -895,11 +916,11 @@ PAGES.propostas=function(){
   var pend=lista.filter(function(p){return p.status==="rascunho"||p.status==="enviada";});
   var sv=0,sc=0,semPct=0;
   pend.forEach(function(p){var vp=propValor(p);if(vp.total!=null)sv+=vp.total;if(vp.com!=null)sc+=vp.com;else if(vp.total!=null)semPct++;});
-  h+='<div class="card" style="margin-top:14px;display:flex;gap:28px;flex-wrap:wrap;align-items:center">'+
-    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Em aberto (rascunho + enviadas)</div><b style="font-size:19px;color:var(--navy)">'+pend.length+' proposta(s)</b></div>'+
-    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Valor em propostas</div><b style="font-size:19px;color:var(--navy)">'+brl0(sv)+'</b></div>'+
-    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Comissões se fechar todas</div><b style="font-size:19px;color:var(--green)">'+brl0(sc)+'</b></div>'+
-    '<div class="mini" style="margin-left:auto;text-align:right">🔒 controle interno — não aparece nas propostas dos clientes'+(semPct?'<br>⚠️ '+semPct+' proposta(s) em aberto sem a % de comissão preenchida':'')+'</div></div>';
+  h+='<div class="propsum">'+
+    '<div class="ps"><div class="ic">📄</div><div><div class="k">Propostas em aberto</div><div class="v">'+pend.length+'</div><div class="f">aguardando o cliente fechar</div></div></div>'+
+    '<div class="ps"><div class="ic">💰</div><div><div class="k">Valor em propostas</div><div class="v">'+brl0(sv)+'</div><div class="f">soma das propostas em aberto</div></div></div>'+
+    '<div class="ps gold"><div class="ic">🏆</div><div><div class="k">Comissões a fechar</div><div class="v">'+brl0(sc)+'</div><div class="f">é o que entra se todas fecharem</div></div></div>'+
+    '<div class="pnote">🔒 Controle interno — nada disso aparece na proposta do cliente'+(semPct?' · <span style="color:var(--gold)">⚠️ '+semPct+' proposta(s) sem a % de comissão preenchida</span>':'')+'</div></div>';
   return h;
 };
 function marcaProp(id,st){var p=DB.propostas.find(function(x){return x.id===id;});p.status=st;save();go("propostas");
@@ -1596,18 +1617,22 @@ function selftest(){
     var pTest={ops:[{nome:"A",total:"10000",comissaoPct:"5",destaque:false},{nome:"B",total:"20000",comissaoPct:"10",destaque:true}]};
     var vpT=propValor(pTest);
     T("comissão: usa a operadora ⭐",vpT.total===20000&&vpT.com===2000);
-    T("comissão: sem ⭐ usa a 1ª com total",(function(){pTest.ops[1].destaque=false;var v=propValor(pTest);return v.total===10000&&v.com===500;})());
+    T("comissão: sem ⭐ vale a MENOR comissão",(function(){pTest.ops[1].destaque=false;var v=propValor(pTest);return v.total===10000&&v.com===500;})());
+    T("comissão: menor ganha mesmo não sendo a 1ª",(function(){
+      var px={ops:[{nome:"A",total:"20000",comissaoPct:"10",destaque:false},{nome:"B",total:"10000",comissaoPct:"5",destaque:false}]};
+      var v=propValor(px);return v.total===10000&&v.com===500;})());
     DB.propostas=[
       {id:"pa",num:"2026-101",data:hojeISO(),validadeDias:7,status:"enviada",obs:"",cliente:{nome:"Pend Um"},veics:[],cobs:[],ops:[{nome:"PREV",total:"10000",comissaoPct:"5",destaque:true}]},
       {id:"pb",num:"2026-102",data:hojeISO(),validadeDias:7,status:"rascunho",obs:"",cliente:{nome:"Pend Dois"},veics:[],cobs:[],ops:[{nome:"COOP",total:"20000",comissaoPct:"",destaque:false}]},
       {id:"pc",num:"2026-103",data:hojeISO(),validadeDias:7,status:"fechada",obs:"",cliente:{nome:"Fechada"},veics:[],cobs:[],ops:[{nome:"PREV",total:"50000",comissaoPct:"5",destaque:false}]}];
     propFiltro="todas";
     var pgP=PAGES.propostas();
-    T("prop: colunas Valor e Comissão",pgP.indexOf('class="r">Valor')>=0&&pgP.indexOf('class="r">Comissão')>=0);
-    T("prop: soma em aberto 30k",pgP.indexOf(brl0(30000))>=0);
-    T("prop: comissões se fechar todas 500",pgP.indexOf("Comissões se fechar todas")>=0&&pgP.indexOf(brl0(500))>=0);
+    T("prop: coluna Valor/comissão",pgP.indexOf("Valor / comissão")>=0&&pgP.indexOf("com. "+brl(500))>=0);
+    T("prop: tabela sem rolagem (classe fit)",pgP.indexOf('<table class="fit">')>=0);
+    T("prop: cartão Propostas em aberto = 2",pgP.indexOf("Propostas em aberto")>=0&&pgP.indexOf('class="v">2<')>=0);
+    T("prop: valor em propostas 30k",pgP.indexOf(brl0(30000))>=0);
+    T("prop: Comissões a fechar 500",pgP.indexOf("Comissões a fechar")>=0&&pgP.indexOf('class="v">'+brl0(500)+'<')>=0);
     T("prop: avisa % faltando",pgP.indexOf("sem a % de comissão")>=0);
-    T("prop: fechada fora do em aberto",pgP.indexOf("2 proposta(s)")>=0);
     // editor: digitar a % salva
     novaProposta("unico");
     var inpC=document.querySelector('#pOpsGrid input.opval[data-k="comissaoPct"]');
