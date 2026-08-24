@@ -845,7 +845,7 @@ function pDrawOps(){
     g.appendChild(pCell('<span class="rowlab" style="color:var(--navy);font-weight:700">'+par[1]+'</span>'));
     P.ops.forEach(function(op,oi){
       var d=pCell("");
-      d.innerHTML='<input value="'+esc(op[k])+'" oninput="P.ops['+oi+']['+JSON.stringify(k)+']=this.value">';
+      d.innerHTML='<input class="opval" data-k="'+k+'" value="'+esc(op[k])+'" oninput="P.ops['+oi+'].'+k+'=this.value">';
       g.appendChild(d);});});
 }
 function colheProposta(){
@@ -1275,6 +1275,19 @@ function selftest(){
     T("aviso: ignora coluna vazia",falt.indexOf("(operadora sem nome)")<0);
     T("editor: rótulo novo do total",pDrawOps.toString().indexOf("VALOR TOTAL da proteção")>=0);
     T("gerar: confirma antes de sair em branco",salvarProposta.toString().indexOf("opsSemTotal")>=0);
+    // regressão: DIGITAR nos campos de valor tem que salvar (bug das aspas no oninput)
+    novaProposta("unico");
+    var inpT=document.querySelector('#pOpsGrid input.opval[data-k="total"]');
+    inpT.value="10940,52";inpT.dispatchEvent(new Event("input"));
+    T("DIGITAR o VALOR TOTAL salva de verdade",P.ops[0].total==="10940,52");
+    var inpE=document.querySelectorAll('#pOpsGrid input.opval[data-k="entrada"]')[1];
+    inpE.value="500";inpE.dispatchEvent(new Event("input"));
+    T("digitar a entrada salva (2ª operadora)",P.ops[1].entrada==="500");
+    var inpM=document.querySelector('#pOpsGrid input.opval[data-k="maxParc"]');
+    inpM.value="11";inpM.dispatchEvent(new Event("input"));
+    T("digitar o máx. de parcelas salva",String(P.ops[0].maxParc)==="11");
+    colheProposta();renderDoc(P);
+    T("proposta digitada gera parcelas (11x de 10.940,52 = 994,59)",$("propOverlay").innerHTML.indexOf("994,59")>=0);
     DB.propostas.push({id:"pf1",num:"2026-777",data:hojeISO(),validadeDias:7,status:"rascunho",obs:"",cliente:{nome:"Frota Teste SA"},cobs:[],ops:[],
       veics:[{marca:"V",modelo:"FH",placa:"AAA-1111",fipe:"1"},{marca:"V",modelo:"FH",placa:"BBB-2222",fipe:"1"}]});
     propFiltro="frota";
