@@ -596,7 +596,8 @@ function editCliente(id){
     '<div class="inp"><label>Mensalidade (R$)</label><input id="cMens" value="'+(c.mensalidade!=null?esc(String(c.mensalidade).replace(".",",")):"")+'"></div>'+
     '<div class="inp"><label>Renovação (dd/mm/aaaa)</label><input id="cRen" value="'+esc(c.renovacao?fmtData(c.renovacao):"")+'"></div></div>'+
     '<div class="fr"><div class="inp"><label>Situação de pagamento</label><select id="cSt">'+
-      Object.keys(STATUS).map(function(k){return '<option value="'+k+'"'+(c.status===k?" selected":"")+'>'+STATUS[k][1]+'</option>';}).join("")+'</select></div>'+
+      Object.keys(STATUS).map(function(k){return '<option value="'+k+'"'+(c.status===k?" selected":"")+'>'+STATUS[k][1]+'</option>';}).join("")+'</select>'+
+      '<div class="mini" style="margin-top:4px">Sugestão: <b>Atrasado</b> = venceu há poucos dias · <b>Inadimplente</b> = 30+ dias (ou 2 mensalidades)</div></div>'+
     '<div class="inp"><label>Observações</label><input id="cObs" value="'+esc(c.obs||"")+'"></div></div>'+
     '<div class="section-title" style="margin:14px 0 8px"><span class="bar"></span>Veículos <button class="btn sm" style="margin-left:auto" onclick="addVeicRow()">+ veículo</button></div>'+
     '<div class="scrollx"><table class="ed" id="cvTable" style="min-width:560px"><thead><tr><th>Marca</th><th>Modelo</th><th>Ano</th><th>Placa</th><th>FIPE</th><th></th></tr></thead><tbody>'+vRows+'</tbody></table></div>';
@@ -853,6 +854,13 @@ function abrirOrcamentoImportado(pr,nomeArq){
 }
 var propFiltro="todas";
 function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;}
+function propValor(p){
+  var comTotal=(p.ops||[]).filter(function(o){return num(o.total)!=null;});
+  if(!comTotal.length)return {total:null,com:null};
+  var o=comTotal.find(function(x){return x.destaque;})||comTotal[0];
+  var t=num(o.total),pct=num(o.comissaoPct);
+  return {total:t,com:(pct!=null&&t!=null)?Math.round(t*pct)/100:null};
+}
 PAGES.propostas=function(){
   var h='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
     '<button class="btn primary" onclick="novaProposta(\'unico\')">➕ Nova proposta — 1 veículo</button>'+
@@ -869,18 +877,29 @@ PAGES.propostas=function(){
     if(propFiltro==="frota")return nvProp(p)>=2;
     return true;});
   if(!lista.length)return h+'<div class="card" style="color:var(--muted)">Nenhuma proposta '+(propFiltro==="frota"?"de frota":"de 1 veículo")+' ainda.</div>';
-  h+='<div class="tbl-wrap"><table><thead><tr><th>Nº</th><th>Cliente</th><th>Tipo</th><th>Operadoras</th><th>Data</th><th>Situação</th><th></th></tr></thead><tbody>'+
+  h+='<div class="tbl-wrap"><table><thead><tr><th>Nº</th><th>Cliente</th><th>Tipo</th><th>Operadoras</th><th class="r">Valor</th><th class="r">Comissão</th><th>Data</th><th>Situação</th><th></th></tr></thead><tbody>'+
     lista.slice().reverse().map(function(p){
-      var nv=nvProp(p);
+      var nv=nvProp(p),vp=propValor(p);
       return '<tr><td><b>'+esc(p.num)+'</b></td><td class="cli"><div class="av">'+ini(p.cliente.nome)+'</div>'+esc(p.cliente.nome||"—")+'</td>'+
       '<td>'+(nv>=2?'<span class="fbadge frota">FROTA · '+nv+'</span>':'<span class="fbadge unico">1 VEÍCULO</span>')+'</td>'+
-      '<td>'+esc((p.ops||[]).map(function(o){return o.nome;}).filter(Boolean).join(", ")||"—")+'</td><td>'+fmtData(p.data)+'</td>'+
+      '<td>'+esc((p.ops||[]).map(function(o){return o.nome;}).filter(Boolean).join(", ")||"—")+'</td>'+
+      '<td class="r">'+(vp.total!=null?brl(vp.total):"—")+'</td>'+
+      '<td class="r '+(vp.com!=null?"pos":"")+'">'+(vp.com!=null?brl(vp.com):"—")+'</td>'+
+      '<td>'+fmtData(p.data)+'</td>'+
       '<td><span class="badge '+propBad[p.status][0]+'">'+propBad[p.status][1]+'</span></td>'+
       '<td><button class="act" onclick="abrirProposta(\''+p.id+'\')">Abrir</button>'+
       '<button class="act" onclick="verDoc(\''+p.id+'\')">📄 PDF</button>'+
       (p.status==="enviada"?'<button class="act g" onclick="marcaProp(\''+p.id+'\',\'fechada\')">Fechou!</button>':'')+
       '<button class="act r" onclick="delProposta(\''+p.id+'\')">✕</button></td></tr>';}).join("")+
     '</tbody></table></div>';
+  var pend=lista.filter(function(p){return p.status==="rascunho"||p.status==="enviada";});
+  var sv=0,sc=0,semPct=0;
+  pend.forEach(function(p){var vp=propValor(p);if(vp.total!=null)sv+=vp.total;if(vp.com!=null)sc+=vp.com;else if(vp.total!=null)semPct++;});
+  h+='<div class="card" style="margin-top:14px;display:flex;gap:28px;flex-wrap:wrap;align-items:center">'+
+    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Em aberto (rascunho + enviadas)</div><b style="font-size:19px;color:var(--navy)">'+pend.length+' proposta(s)</b></div>'+
+    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Valor em propostas</div><b style="font-size:19px;color:var(--navy)">'+brl0(sv)+'</b></div>'+
+    '<div><div class="mini" style="text-transform:uppercase;letter-spacing:.4px">Comissões se fechar todas</div><b style="font-size:19px;color:var(--green)">'+brl0(sc)+'</b></div>'+
+    '<div class="mini" style="margin-left:auto;text-align:right">🔒 controle interno — não aparece nas propostas dos clientes'+(semPct?'<br>⚠️ '+semPct+' proposta(s) em aberto sem a % de comissão preenchida':'')+'</div></div>';
   return h;
 };
 function marcaProp(id,st){var p=DB.propostas.find(function(x){return x.id===id;});p.status=st;save();go("propostas");
@@ -1001,7 +1020,7 @@ function pDrawOps(){
         '<button class="yn n'+(isNao?" on":"")+'" title="Não" onclick="pSetVal('+oi+','+ci+',\'Não\')">✗</button>'+
         '<input value="'+esc(isSim||isNao?"":v)+'" placeholder="ou valor…" oninput="P.ops['+oi+'].vals['+JSON.stringify(cb).replace(/"/g,"&quot;")+']=this.value;var bs=this.parentNode.querySelectorAll(\'.yn\');bs[0].classList.remove(\'on\');bs[1].classList.remove(\'on\')">';
       g.appendChild(d);});});
-  [["total","💰 VALOR TOTAL da proteção (R$)"],["entrada","Entrada (se houver) R$"],["maxParc","Parcela em até (x)"],["nota","Observação"]].forEach(function(par){
+  [["total","💰 VALOR TOTAL da proteção (R$)"],["comissaoPct","🔒 Comissão % (interno — não sai no PDF)"],["entrada","Entrada (se houver) R$"],["maxParc","Parcela em até (x)"],["nota","Observação"]].forEach(function(par){
     var k=par[0];
     g.appendChild(pCell('<span class="rowlab" style="color:var(--navy);font-weight:700">'+par[1]+'</span>'));
     P.ops.forEach(function(op,oi){
@@ -1213,7 +1232,13 @@ PAGES.fin=function(){
       return '<tr><td>'+fmtData(l.data)+'</td><td>'+esc(l.desc)+'</td><td><span class="badge '+finTipos[l.tipo][0]+'">'+finTipos[l.tipo][1]+'</span></td>'+
       '<td class="r '+(l.tipo==="saida"?"neg":"pos")+'">'+(l.tipo==="saida"?"− ":"+ ")+brl(l.valor)+'</td>'+
       '<td><button class="act r" onclick="delLanc(\''+l.id+'\')">✕</button></td></tr>';}).join("")+
-    '</tbody></table></div>';
+    '</tbody>'+(function(){
+      var soma,txt,cls;
+      if(FINF.tipo==="saida"){soma=lista.reduce(function(a,l){return a+l.valor;},0);txt="− "+brl(soma);cls="neg";}
+      else if(FINF.tipo==="todos"){soma=lista.reduce(function(a,l){return a+(l.tipo==="saida"?-l.valor:l.valor);},0);txt=(soma<0?"− ":"+ ")+brl(Math.abs(soma));cls=soma<0?"neg":"pos";}
+      else{soma=lista.reduce(function(a,l){return a+l.valor;},0);txt="+ "+brl(soma);cls="pos";}
+      return '<tfoot><tr style="background:#f5f2ea;font-weight:700"><td colspan="3">Total dos '+lista.length+' lançamento(s) listado(s)'+(FINF.tipo==="todos"?" (entradas + comissões − saídas)":"")+'</td><td class="r '+cls+'">'+txt+'</td><td></td></tr></tfoot>';
+    })()+'</table></div>';
   return h;
 };
 function fmtMes(m){var p=m.split("-");var nomes=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];return nomes[parseInt(p[1])-1]+"/"+p[0];}
@@ -1567,6 +1592,35 @@ function selftest(){
     T("clientes: filtro situação esconde os demais",cb.indexOf("SÃO JORGE")<0);
     cliSit="todos";filtraCli();
     T("clientes: voltar pra Todos",$("cliBody").innerHTML.indexOf("SÃO JORGE")>=0);
+    // comissão por operadora
+    var pTest={ops:[{nome:"A",total:"10000",comissaoPct:"5",destaque:false},{nome:"B",total:"20000",comissaoPct:"10",destaque:true}]};
+    var vpT=propValor(pTest);
+    T("comissão: usa a operadora ⭐",vpT.total===20000&&vpT.com===2000);
+    T("comissão: sem ⭐ usa a 1ª com total",(function(){pTest.ops[1].destaque=false;var v=propValor(pTest);return v.total===10000&&v.com===500;})());
+    DB.propostas=[
+      {id:"pa",num:"2026-101",data:hojeISO(),validadeDias:7,status:"enviada",obs:"",cliente:{nome:"Pend Um"},veics:[],cobs:[],ops:[{nome:"PREV",total:"10000",comissaoPct:"5",destaque:true}]},
+      {id:"pb",num:"2026-102",data:hojeISO(),validadeDias:7,status:"rascunho",obs:"",cliente:{nome:"Pend Dois"},veics:[],cobs:[],ops:[{nome:"COOP",total:"20000",comissaoPct:"",destaque:false}]},
+      {id:"pc",num:"2026-103",data:hojeISO(),validadeDias:7,status:"fechada",obs:"",cliente:{nome:"Fechada"},veics:[],cobs:[],ops:[{nome:"PREV",total:"50000",comissaoPct:"5",destaque:false}]}];
+    propFiltro="todas";
+    var pgP=PAGES.propostas();
+    T("prop: colunas Valor e Comissão",pgP.indexOf('class="r">Valor')>=0&&pgP.indexOf('class="r">Comissão')>=0);
+    T("prop: soma em aberto 30k",pgP.indexOf(brl0(30000))>=0);
+    T("prop: comissões se fechar todas 500",pgP.indexOf("Comissões se fechar todas")>=0&&pgP.indexOf(brl0(500))>=0);
+    T("prop: avisa % faltando",pgP.indexOf("sem a % de comissão")>=0);
+    T("prop: fechada fora do em aberto",pgP.indexOf("2 proposta(s)")>=0);
+    // editor: digitar a % salva
+    novaProposta("unico");
+    var inpC=document.querySelector('#pOpsGrid input.opval[data-k="comissaoPct"]');
+    inpC.value="5";inpC.dispatchEvent(new Event("input"));
+    T("comissão: digitar salva",P.ops[0].comissaoPct==="5");
+    // total do financeiro
+    DB.fin=[{id:"f1",tipo:"entrada",valor:1000,data:"2026-01-15",desc:"EJan"},{id:"f2",tipo:"saida",valor:200,data:"2026-01-20",desc:"SJan"}];
+    FINF={de:"2026-01-01",ate:"2026-01-31",preset:"",tipo:"todos"};
+    var pgF2=PAGES.fin();
+    T("fin: total líquido no rodapé",pgF2.indexOf("Total dos 2 lançamento(s)")>=0&&pgF2.indexOf("+ "+brl(800))>=0);
+    FINF.tipo="saida";pgF2=PAGES.fin();
+    T("fin: total das saídas",pgF2.indexOf("Total dos 1 lançamento(s)")>=0&&pgF2.indexOf("− "+brl(200))>=0);
+    FINF={de:null,ate:null,preset:"mes",tipo:"todos"};
   }catch(e){R.push("FAIL :: exceção: "+e.message);}
   var div=document.createElement("pre");div.id="selftestOut";div.textContent=R.join("\n");
   document.body.appendChild(div);
