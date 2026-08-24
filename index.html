@@ -283,8 +283,8 @@
   <div class="mb" id="mbody"></div><div class="mf" id="mfoot"></div>
 </div></div>
 <input type="file" id="fileRestore" accept=".json" style="display:none">
-<input type="file" id="fileImport" accept=".csv,.txt,.tsv" style="display:none">
-<input type="file" id="fileImportFin" accept=".csv,.txt,.tsv" style="display:none">
+<input type="file" id="fileImport" accept=".xlsx,.csv,.txt,.tsv" style="display:none">
+<input type="file" id="fileImportFin" accept=".xlsx,.csv,.txt,.tsv" style="display:none">
 
 <script>
 "use strict";
@@ -621,6 +621,77 @@ function delCliente(id){var c=DB.clientes.find(function(x){return x.id===id;});
   if(!confirm("Remover o cliente \""+c.nome+"\"?\n(As propostas e problemas dele não são apagados.)"))return;
   DB.clientes=DB.clientes.filter(function(x){return x.id!==id;});save();go("clientes");toast("Cliente removido");}
 
+/* ====== LEITOR DE .XLSX EMBUTIDO (sem internet, sem biblioteca) ====== */
+function xlsxParaLinhas(file){
+  return file.arrayBuffer().then(function(buf){
+    var dv=new DataView(buf),u8=new Uint8Array(buf);
+    var eo=-1;
+    for(var i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65558);i--){if(dv.getUint32(i,true)===0x06054b50){eo=i;break;}}
+    if(eo<0)throw new Error("não parece um arquivo do Excel (.xlsx)");
+    var n=dv.getUint16(eo+10,true),cd=dv.getUint32(eo+16,true),ent={},p=cd;
+    for(var k=0;k<n;k++){
+      if(dv.getUint32(p,true)!==0x02014b50)break;
+      var comp=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),
+          el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true);
+      var nome=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));
+      ent[nome]={comp:comp,csz:csz,off:off};p+=46+nl+el+cl;
+    }
+    function lerEntry(nome){
+      var e=ent[nome];if(!e)return Promise.resolve(null);
+      var lnl=dv.getUint16(e.off+26,true),lel=dv.getUint16(e.off+28,true);
+      var ini2=e.off+30+lnl+lel,dados=u8.subarray(ini2,ini2+e.csz);
+      if(e.comp===0)return Promise.resolve(dados);
+      var st=new Blob([dados]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return new Response(st).arrayBuffer().then(function(ab){return new Uint8Array(ab);});
+    }
+    var cands=Object.keys(ent).filter(function(x){return /^xl\/worksheets\/sheet\d+\.xml$/.test(x);}).sort();
+    var sheet=ent["xl/worksheets/sheet1.xml"]?"xl/worksheets/sheet1.xml":cands[0];
+    if(!sheet)throw new Error("planilha vazia");
+    return Promise.all([lerEntry("xl/sharedStrings.xml"),lerEntry(sheet)]).then(function(rs){
+      var dec=new TextDecoder(),sst=[];
+      if(rs[0]){var sd=new DOMParser().parseFromString(dec.decode(rs[0]),"application/xml");
+        var sis=sd.getElementsByTagName("si");
+        for(var a=0;a<sis.length;a++)sst.push(sis[a].textContent);}
+      var xd=new DOMParser().parseFromString(dec.decode(rs[1]),"application/xml");
+      var rows=[],maxc=0,rlist=xd.getElementsByTagName("row");
+      for(var ri=0;ri<rlist.length;ri++){
+        var cells=rlist[ri].getElementsByTagName("c"),arr=[];
+        for(var ci=0;ci<cells.length;ci++){
+          var c=cells[ci],ref=c.getAttribute("r")||"",t=c.getAttribute("t")||"",col=arr.length;
+          var m=ref.match(/^([A-Z]+)/);
+          if(m){col=0;for(var j=0;j<m[1].length;j++)col=col*26+(m[1].charCodeAt(j)-64);col--;}
+          var val="";
+          if(t==="inlineStr")val=c.textContent;
+          else{var v=c.getElementsByTagName("v")[0];val=v?v.textContent:"";
+            if(t==="s")val=(sst[parseInt(val)]!=null)?sst[parseInt(val)]:"";}
+          arr[col]=String(val).replace(/[\t\r\n]+/g," ").trim();
+          if(col+1>maxc)maxc=col+1;
+        }
+        rows.push(arr);
+      }
+      return rows.map(function(r){var o=[];for(var x=0;x<maxc;x++)o.push(r[x]!=null?r[x]:"");return o;});
+    });
+  });
+}
+function linhasParaTSV(rows){return rows.map(function(r){return r.join("\t");}).join("\n");}
+function trataArquivoImport(f,txtId,fnLer){
+  if(/\.xlsx$/i.test(f.name)){
+    xlsxParaLinhas(f).then(function(rows){var tsv=linhasParaTSV(rows);$(txtId).value=tsv;fnLer(tsv);
+      toast("📗 Excel lido: "+f.name+" ("+Math.max(rows.length-1,0)+" linhas)");})
+    .catch(function(e){toast("⚠️ Não consegui ler esse Excel ("+e.message+"). Alternativa: abra no Excel, copie as células e cole na caixa.");});
+  }else{
+    var r=new FileReader();r.onload=function(){$(txtId).value=r.result;fnLer(r.result);};r.readAsText(f,"utf-8");
+  }
+}
+/* data em número do Excel (serial) -> dd/mm/aaaa */
+function parseDataAuto(v){
+  var d=parseDataBR(v);if(d)return d;
+  var n=parseFloat(String(v||"").trim());
+  if(!isNaN(n)&&n===Math.floor(n)&&n>25569&&n<80000)
+    return new Date((n-25569)*86400000).toISOString().slice(0,10);
+  return null;
+}
+
 /* ====== IMPORTAÇÃO DE PLANILHA (colar do Excel ou CSV) ====== */
 var IMP={rows:[],headers:[]};
 function abrirImport(){
@@ -629,13 +700,13 @@ function abrirImport(){
   $("mbody").innerHTML=
     '<div class="alertbar" style="margin-bottom:12px">📋 <b>Jeito mais fácil:</b> abra a sua planilha no Excel, selecione as células (com a linha de título), copie (Ctrl+C) e <b>cole aqui embaixo</b> (Ctrl+V). Ou clique em "Escolher arquivo CSV".</div>'+
     '<div class="inp"><label>Cole aqui os dados copiados do Excel</label><textarea id="impTxt" rows="6" placeholder="Cole aqui..." oninput="lerImport(this.value)"></textarea></div>'+
-    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImport\').click()">📁 …ou escolher arquivo CSV</button></div>'+
+    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImport\').click()">📁 …ou escolher a planilha (Excel ou CSV)</button></div>'+
     '<div id="impMap"></div>';
   $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" id="impGo" style="display:none" onclick="fazImport()">⬇ Importar</button>';
   $("modal").classList.add("on");
 }
 $("fileImport").addEventListener("change",function(){var f=this.files[0];if(!f)return;
-  var r=new FileReader();r.onload=function(){$("impTxt").value=r.result;lerImport(r.result);};r.readAsText(f,"utf-8");this.value="";});
+  trataArquivoImport(f,"impTxt",lerImport);this.value="";});
 function splitLinha(l,sep){ // split simples respeitando aspas
   var out=[],cur="",q=false;
   for(var i=0;i<l.length;i++){var ch=l[i];
@@ -682,7 +753,7 @@ function fazImport(){
     var st="novo";var sl=(o.status||"").toLowerCase();
     if(/inad/.test(sl))st="inadimplente";else if(/atras|venc|pend/.test(sl))st="atrasado";else if(/dia|ok|pago|ativ/.test(sl))st="emdia";else if(/inativ|cancel/.test(sl))st="inativo";
     var cli={id:uid(),nome:o.nome,doc:o.doc||"",tel:o.tel||"",mail:o.mail||"",operadora:o.operadora||"",
-      mensalidade:num(o.mensalidade),renovacao:parseDataBR(o.renovacao)||"",status:st,obs:o.obs||"",
+      mensalidade:num(o.mensalidade),renovacao:parseDataAuto(o.renovacao)||"",status:st,obs:o.obs||"",
       veiculos:(v.placa||v.modelo||v.marca||v.fipe)?[{marca:v.marca||"",modelo:v.modelo||"",ano:v.ano||"",placa:v.placa||"",fipe:v.fipe||""}]:[]};
     var ja=DB.clientes.find(function(x){return (x.doc&&cli.doc&&x.doc.replace(/\D/g,"")===cli.doc.replace(/\D/g,""))||x.nome.toLowerCase()===cli.nome.toLowerCase();});
     if(ja){ // atualiza sem apagar o que já existe
@@ -1099,7 +1170,7 @@ function abrirImportFin(){
   $("mbody").innerHTML=
     '<div class="alertbar" style="margin-bottom:12px">📋 Traga o seu controle antigo: abra a planilha no Excel, selecione as células (com a linha de título), copie (Ctrl+C) e <b>cole aqui embaixo</b>. Precisa ter pelo menos <b>uma coluna de DATA e uma de VALOR</b> — é a data que faz o filtro por mês funcionar.</div>'+
     '<div class="inp"><label>Cole aqui os dados copiados do Excel</label><textarea id="impfTxt" rows="6" placeholder="Cole aqui..." oninput="lerImportFin(this.value)"></textarea></div>'+
-    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImportFin\').click()">📁 …ou escolher arquivo CSV</button></div>'+
+    '<div style="margin:9px 0"><button class="btn sm" onclick="$(\'fileImportFin\').click()">📁 …ou escolher a planilha (Excel ou CSV)</button></div>'+
     '<div id="impfMap"></div>';
   $("mfoot").innerHTML='<button class="btn" onclick="closeM()">Cancelar</button><button class="btn primary" id="impfGo" style="display:none" onclick="fazImportFin()">⬇ Importar</button>';
   $("modal").classList.add("on");
@@ -1135,7 +1206,7 @@ function fazImportFin(){
   IMPF.rows.forEach(function(r){
     var o={};
     mapa.forEach(function(campo,i){if(campo==="ignorar")return;var val=(r[i]||"").trim();if(!val)return;o[campo]=val;});
-    var data=parseDataBR(o.data);
+    var data=parseDataAuto(o.data);
     var valor=num(o.valor);
     if(valor==null){pulados++;return;}
     if(!data){semData++;return;}
@@ -1156,7 +1227,7 @@ function fazImportFin(){
   toast("✅ Histórico: "+novos+" lançamento(s) importado(s)"+(pulados?", "+pulados+" repetido(s)/sem valor pulado(s)":"")+(semData?", "+semData+" sem data (não entram no filtro — corrija a coluna de data)":""));
 }
 $("fileImportFin").addEventListener("change",function(){var f=this.files[0];if(!f)return;
-  var r=new FileReader();r.onload=function(){$("impfTxt").value=r.result;lerImportFin(r.result);};r.readAsText(f,"utf-8");this.value="";});
+  trataArquivoImport(f,"impfTxt",lerImportFin);this.value="";});
 
 /* =================== CONFIG =================== */
 PAGES.config=function(){
@@ -1196,6 +1267,11 @@ function selftest(){
     T("num com R$",num("R$ 1.989,86")===1989.86);
     T("num milhar sem centavos",num("98.610")===98610);
     T("num milhão",num("1.234.567")===1234567);
+    var srl=Math.round(new Date("2026-08-28T00:00:00Z").getTime()/86400000)+25569;
+    T("data serial do Excel",parseDataAuto(String(srl))==="2026-08-28");
+    T("data texto continua ok",parseDataAuto("28/08/2026")==="2026-08-28");
+    T("data inválida = null",parseDataAuto("abc")===null&&parseDataAuto("150")===null);
+    T("leitor xlsx presente",typeof xlsxParaLinhas==="function"&&typeof DecompressionStream!=="undefined");
     T("brl",brl(5470.26)==="R$ "+(5470.26).toLocaleString("pt-BR",{minimumFractionDigits:2}));
     T("parseDataBR",parseDataBR("05/09/2026")==="2026-09-05");
     T("fmtData",fmtData("2026-09-05")==="05/09/2026");
