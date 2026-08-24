@@ -202,6 +202,7 @@
   table.cmp td.val{text-align:center;font-weight:600}
   table.cmp .yes{color:var(--green);font-weight:700}
   table.cmp .no{color:#98a0b0}
+  table.cmp .nay{color:var(--red);font-weight:700}
   table.cmp .hi{background:#fdf7e8}
   table.cmp thead th.hi{background:#8a6412}
   .star{display:inline-block;font-size:9.5px;background:var(--gold);color:var(--navy);border-radius:10px;padding:1px 7px;font-weight:800;margin-left:5px;vertical-align:middle}
@@ -881,7 +882,7 @@ function fmtVal(v){
   if(v==null||v==="")return '<span class="no">—</span>';
   var s=String(v).trim(),l=s.toLowerCase();
   if(l==="sim")return '<span class="yes">✓ Sim</span>';
-  if(l==="não"||l==="nao")return '<span class="no">✗ Não</span>';
+  if(l==="não"||l==="nao")return '<span class="nay">✗ Não</span>';
   var n=num(s);
   if(n!=null&&String(s).replace(/[\d.,\s%]/g,"")===""){
     if(/%$/.test(s))return esc(s);
@@ -1185,6 +1186,8 @@ function selftest(){
     T("doc: valor da entrada vira nota",doc.indexOf("entrada de R$ 6.177,67")>=0);
     T("doc: 1x da entrada = restante",doc.indexOf("Entrada + 1x de R$ 59.020,17")>=0);
     T("doc: a vista sem (1x)",doc.indexOf("À vista (1x)")<0&&doc.indexOf("À vista")>=0);
+    T("cobertura: Não sai em vermelho (classe nay)",fmtVal("Não").indexOf('class="nay"')>=0&&fmtVal("nao").indexOf('nay')>=0);
+    T("cobertura: vazio segue cinza (—)",fmtVal("").indexOf('class="no"')>=0);
     T("doc: recomendada",doc.indexOf("RECOMENDADA")>=0);
     T("doc: fipe format",doc.indexOf("98.610,00")>=0);
     T("doc: veiculo unico",doc.indexOf("VEÍCULO ÚNICO")>=0);
