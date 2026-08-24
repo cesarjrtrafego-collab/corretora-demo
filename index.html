@@ -234,14 +234,14 @@
     .topbar{padding:11px 14px}.topbar h1{font-size:16px}
     .kpi .val{font-size:19px}
   }
-  @page{size:A4;margin:9mm}
+  @page{size:A4;margin:0} /* margem 0 = o navegador não imprime data/hora nem o endereço da página */
   @media print{
     body>*{display:none!important}
     #propOverlay{display:block!important;position:static;background:#fff;padding:0;overflow:visible}
     #propOverlay .po-bar{display:none!important}
     .po-doc{box-shadow:none;max-width:100%;border-radius:0}
-    .dochead{padding:16px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .dsec{padding:12px 4px 4px}.docfoot{padding:10px 4px}
+    .dochead{padding:10mm 11mm 7mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .dsec{padding:12px 11mm 4px}.docfoot{padding:10px 11mm 9mm}
     table.dt th,table.cmp thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .dsec,table.pay,.obsbox{page-break-inside:avoid}
     table.cmp tr{page-break-inside:avoid}
