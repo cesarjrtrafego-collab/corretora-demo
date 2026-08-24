@@ -755,7 +755,7 @@ PAGES.editProp=function(){
     '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Operadoras '+
     '<span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onclick="pAddOp()">+ operadora</button><button class="btn sm" onclick="pAddCob()">+ linha</button></span></div>'+
     '<div class="scrollx"><div class="ops" id="pOpsGrid"></div></div>'+
-    '<div class="mini" style="margin-top:8px">💡 <b>VALOR TOTAL da proteção</b> = o preço à vista que a operadora cotou (ex.: 10.940,52) — é dele que o sistema calcula <b>todas as parcelas</b>; <b>sem ele, a parte de pagamento sai em branco</b>. Marque <b>⭐</b> na melhor opção pra ela sair como <b>RECOMENDADA</b> no PDF.</div></div>'+
+    '<div class="mini" style="margin-top:8px">💡 <b>VALOR TOTAL da proteção</b> = o preço à vista que a operadora cotou (ex.: 10.940,52) — é dele que o sistema calcula <b>todas as parcelas</b>; <b>sem ele, a parte de pagamento sai em branco</b>. Se houver <b>Entrada</b>, "parcela em até" = nº de parcelas <b>depois</b> da entrada. Marque <b>⭐</b> na melhor opção pra ela sair como <b>RECOMENDADA</b> no PDF.</div></div>'+
     '<div class="card"><div class="section-title" style="margin-top:0"><span class="bar"></span>Condições</div>'+
     '<div class="fr3"><div class="inp"><label>Validade (dias)</label><input id="pVal" type="number" min="1"></div>'+
     '<div class="inp"><label>Nº da proposta</label><input id="pNum"></div>'+
@@ -919,18 +919,21 @@ function renderDoc(p){
       p.cobs.map(function(cb){return '<tr><td class="lab">'+esc(cb)+'</td>'+ops.map(function(o){return '<td class="val'+(o.destaque?' hi':'')+'">'+fmtVal(o.vals[cb])+'</td>';}).join("")+'</tr>';}).join("")+
       '</tbody></table></div></div>';
     var maxN=Math.max.apply(null,ops.map(function(o){return Math.min(Math.max(parseInt(o.maxParc)||12,1),12);}));
-    var pay='<tr class="tot"><td>À vista (1x)</td>'+ops.map(function(o){var t=num(o.total);return '<td'+(o.destaque?' class="hi"':'')+'>'+(t?brl(t):"—")+'</td>';}).join("")+'</tr>';
-    for(var n=2;n<=maxN;n++){
+    var temEntrada=ops.some(function(o){return num(o.entrada)&&num(o.total);});
+    var pay='<tr class="tot"><td>À vista</td>'+ops.map(function(o){var t=num(o.total);return '<td'+(o.destaque?' class="hi"':'')+'>'+(t?brl(t):"—")+'</td>';}).join("")+'</tr>';
+    for(var n=(temEntrada?1:2);n<=maxN;n++){
       pay+='<tr><td>'+n+'x</td>'+ops.map(function(o){
         var t=num(o.total),e=num(o.entrada),mx=Math.min(Math.max(parseInt(o.maxParc)||12,1),12);
         if(!t||n>mx)return '<td'+(o.destaque?' class="hi"':'')+'>—</td>';
-        if(e){var pc=(t-e)/(n-1);return '<td'+(o.destaque?' class="hi"':'')+'>entrada '+brl(e)+' + '+(n-1)+'x '+brl(Math.round(pc*100)/100)+'</td>';}
-        return '<td'+(o.destaque?' class="hi"':'')+'>'+n+'x '+brl(Math.round(t/n*100)/100)+'</td>';}).join("")+'</tr>';}
-    var notas=ops.filter(function(o){return o.nota;}).map(function(o){return '<b>'+esc(o.nome)+':</b> '+esc(o.nota);}).join(" · ");
+        if(e){var pc=(t-e)/n;return '<td'+(o.destaque?' class="hi"':'')+'>Entrada + '+n+'x de '+brl(Math.round(pc*100)/100)+'</td>';}
+        if(n===1)return '<td'+(o.destaque?' class="hi"':'')+'>—</td>';
+        return '<td'+(o.destaque?' class="hi"':'')+'>'+n+'x de '+brl(Math.round(t/n*100)/100)+'</td>';}).join("")+'</tr>';}
+    var notas=ops.filter(function(o){return num(o.entrada)&&num(o.total);}).map(function(o){return '<b>'+esc(o.nome)+':</b> entrada de '+brl(num(o.entrada));})
+      .concat(ops.filter(function(o){return o.nota;}).map(function(o){return '<b>'+esc(o.nome)+':</b> '+esc(o.nota);})).join(" · ");
     h+='<div class="dsec"><h3>Investimento e formas de pagamento</h3><div class="scrollx"><table class="pay"><thead><tr><th>Parcelamento</th>'+
       ops.map(function(o){return '<th'+(o.destaque?' class="hi"':'')+'>'+esc(o.nome||"—")+'</th>';}).join("")+'</tr></thead><tbody>'+pay+'</tbody></table></div>'+
       (notas?'<div class="paynote">'+notas+'</div>':'')+
-      '<div class="paynote">Pagamento por boleto. Parcelas calculadas sem juros sobre o valor total.</div></div>';
+      '<div class="paynote">Pagamento por boleto. Parcelas sem juros'+(temEntrada?'; nas opções com entrada, calculadas sobre o valor restante':'')+'.</div></div>';
   }
   if(p.obs)h+='<div class="dsec"><h3>Observações</h3><div class="obsbox">'+esc(p.obs)+'</div></div>';
   h+='<div class="dsec"><div class="validity">⏳ Esta proposta é válida por <b>'+p.validadeDias+' dias</b> a partir da data de emissão. Valores sujeitos a análise cadastral e vistoria do veículo.</div></div>';
@@ -1178,7 +1181,10 @@ function selftest(){
     T("doc: 12x prevenir 911,71",doc.indexOf("911,71")>=0);
     T("doc: 11x coopervesc 1.166,25",doc.indexOf("1.166,25")>=0);
     T("doc: coopervesc sem 12x",/12x<\/td><td[^>]*>12x[^<]*<\/td><td[^>]*>—<\/td>/.test(doc));
-    T("doc: entrada transposeg",doc.indexOf("entrada R$ 6.177,67")>=0);
+    T("doc: celula curta de entrada",doc.indexOf("Entrada + 12x de")>=0&&doc.indexOf("entrada R$ 6.177,67")<0);
+    T("doc: valor da entrada vira nota",doc.indexOf("entrada de R$ 6.177,67")>=0);
+    T("doc: 1x da entrada = restante",doc.indexOf("Entrada + 1x de R$ 59.020,17")>=0);
+    T("doc: a vista sem (1x)",doc.indexOf("À vista (1x)")<0&&doc.indexOf("À vista")>=0);
     T("doc: recomendada",doc.indexOf("RECOMENDADA")>=0);
     T("doc: fipe format",doc.indexOf("98.610,00")>=0);
     T("doc: veiculo unico",doc.indexOf("VEÍCULO ÚNICO")>=0);
@@ -1306,6 +1312,9 @@ function selftest(){
     T("demo: dashboard com pendências",dashDemo.indexOf("Para hoje")>=0&&dashDemo.indexOf("inadimplente")>=0);
     renderDoc(DB.propostas[0]);
     T("demo: proposta TR Gimenez gera doc",$("propOverlay").innerHTML.indexOf("TR GIMENEZ")>=0&&$("propOverlay").innerHTML.indexOf("911,71")>=0);
+    T("demo: sem entrada NÃO tem linha 1x",$("propOverlay").innerHTML.indexOf("<td>1x</td>")<0);
+    renderDoc(DB.propostas[1]);
+    T("demo: frota Coopervesc = Entrada + 11x de 5.365,47",$("propOverlay").innerHTML.indexOf("Entrada + 11x de R$ 5.365,47")>=0);
   }catch(e){R.push("FAIL :: exceção: "+e.message);}
   var div=document.createElement("pre");div.id="selftestOut";div.textContent=R.join("\n");
   document.body.appendChild(div);
@@ -1346,7 +1355,7 @@ function seedDemo(){
       {marca:"VOLKSWAGEN",ano:"2010",modelo:"24.250 E CONST. 3 EIXOS",placa:"EMO-1618",chassi:"",fipe:"189827",impl:""},{marca:"VOLVO",ano:"2013",modelo:"FH 460 GLOBETROTTER",placa:"FDZ-0G59",chassi:"",fipe:"246809",impl:""},
       {marca:"RANDON",ano:"2011",modelo:"SR BAÚ ALUMÍNIO",placa:"EKH-8A90",chassi:"",fipe:"",impl:"120000"},{marca:"RANDON",ano:"2013",modelo:"SR BAÚ ALUMÍNIO",placa:"FEI-1D31",chassi:"",fipe:"",impl:"150000"},
       {marca:"CAÇAMBA",ano:"2023",modelo:"BASCULANTE",placa:"GAK-3F21",chassi:"",fipe:"",impl:"185000"},{marca:"RANDON",ano:"2002",modelo:"SR TANQUE",placa:"KEN-7759",chassi:"",fipe:"",impl:"100000"}],
-    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"61384,80","",12),op("COOPERVESC",coop,"65197,84","6177,67",12,true),op("COOP. TRANSPOSEG",tran,"64489,08","",12)]},
+    cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"61384,80","",12),op("COOPERVESC",coop,"65197,84","6177,67",11,true),op("COOP. TRANSPOSEG",tran,"64489,08","",12)]},
    {id:uid(),num:"2026-003",data:dOff(-12),validadeDias:7,validadeAte:dOff(-5),status:"fechada",obs:"",
     cliente:{nome:"TRANSPORTADORA HORIZONTE AZUL",doc:"61.448.007/0001-92",end:"",cep:"",carga:""},
     veics:[{marca:"SCANIA",ano:"2021",modelo:"R500 6X4",placa:"FEI-1D31",chassi:"",fipe:"612400",impl:""}],
