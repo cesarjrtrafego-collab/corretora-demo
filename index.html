@@ -1730,16 +1730,16 @@ function dOff(n){var d=new Date();d.setDate(d.getDate()+n);return isoDe(d);}
 function seedDemo(){
   DB=dbDefault();DB.demo=true;
   var C=[
-   ["TRANSPORTES SÃO JORGE LTDA","41.552.870/0001-19","(11) 98214-6633","PREVENIR TRUCK",1989.86,7,"emdia","BXF-6776","MERC. BENZ","1318 2 PORTAS DIESEL","2004","98610"],
-   ["RODOVIÁRIO IRMÃOS CAMPOS","52.108.334/0001-77","(11) 97730-1284","COOPERVESC",2450,15,"emdia","EJZ-8C33","VOLVO","FH 480 4X2","2010","195223"],
-   ["JOSÉ CARLOS DA SILVA FRETES","221.409.558-04","(13) 99182-4470","COOP. TRANSPOSEG",1610.5,2,"atrasado","QAB-1F22","SCANIA","R450 6X2","2015","289900"],
-   ["EXPRESSO VALE DO RIBEIRA","33.905.412/0001-08","(15) 98801-9932","PREVENIR TRUCK",3120,115,"emdia","FDZ-0G59","VOLVO","FH 460 GLOBETROTTER","2013","246809"],
-   ["MARCOS ANTONIO PEREIRA","178.334.902-77","(11) 96644-2810","COOPERVESC",1385.75,12,"inadimplente","PXE-7H09","VOLKSWAGEN","24.250 CONSTELLATION","2010","189827"],
-   ["LOGÍSTICA BOA VIAGEM LTDA","58.221.906/0001-63","(19) 98115-7248","PREVENIR TRUCK",2890,60,"emdia","GAK-3F21","IVECO","HI-WAY 480","2019","398500"],
-   ["ANDERSON LUIZ TRANSPORTES","305.887.114-30","(11) 95511-0908","COOP. TRANSPOSEG",1740.2,5,"atrasado","KEN-7759","FORD","CARGO 2429","2014","158300"],
-   ["CEREALISTA CAMPO ALEGRE","47.660.281/0001-55","(14) 99722-3161","COOPERVESC",2260.4,100,"emdia","EMO-1618","VOLKSWAGEN","24.250 E 3 EIXOS","2010","189827"],
-   ["TRANSPORTADORA HORIZONTE AZUL","61.448.007/0001-92","(12) 98430-5577","PREVENIR TRUCK",4150,19,"emdia","FEI-1D31","SCANIA","R500 6X4","2021","612400"],
-   ["APARECIDO DONIZETE RAMOS","099.216.744-81","(16) 99650-1123","COOP. TRANSPOSEG",1290,28,"novo","DPF-9I40","MERC. BENZ","ATEGO 2426","2012","175900"]];
+   ["TRANSPORTES SÃO JORGE LTDA","41.552.870/0001-19","(11) 90000-0001","PREVENIR TRUCK",1989.86,7,"emdia","BXF-6776","MERC. BENZ","1318 2 PORTAS DIESEL","2004","98610"],
+   ["RODOVIÁRIO IRMÃOS CAMPOS","52.108.334/0001-77","(11) 90000-0002","COOPERVESC",2450,15,"emdia","EJZ-8C33","VOLVO","FH 480 4X2","2010","195223"],
+   ["JOSÉ CARLOS DA SILVA FRETES","221.409.558-04","(13) 90000-0003","COOP. TRANSPOSEG",1610.5,2,"atrasado","QAB-1F22","SCANIA","R450 6X2","2015","289900"],
+   ["EXPRESSO VALE DO RIBEIRA","33.905.412/0001-08","(15) 90000-0004","PREVENIR TRUCK",3120,115,"emdia","FDZ-0G59","VOLVO","FH 460 GLOBETROTTER","2013","246809"],
+   ["MARCOS ANTONIO PEREIRA","178.334.902-77","(11) 90000-0005","COOPERVESC",1385.75,12,"inadimplente","PXE-7H09","VOLKSWAGEN","24.250 CONSTELLATION","2010","189827"],
+   ["LOGÍSTICA BOA VIAGEM LTDA","58.221.906/0001-63","(19) 90000-0006","PREVENIR TRUCK",2890,60,"emdia","GAK-3F21","IVECO","HI-WAY 480","2019","398500"],
+   ["ANDERSON LUIZ TRANSPORTES","305.887.114-30","(11) 90000-0007","COOP. TRANSPOSEG",1740.2,5,"atrasado","KEN-7759","FORD","CARGO 2429","2014","158300"],
+   ["CEREALISTA CAMPO ALEGRE","47.660.281/0001-55","(14) 90000-0008","COOPERVESC",2260.4,100,"emdia","EMO-1618","VOLKSWAGEN","24.250 E 3 EIXOS","2010","189827"],
+   ["TRANSPORTADORA HORIZONTE AZUL","61.448.007/0001-92","(12) 90000-0009","PREVENIR TRUCK",4150,19,"emdia","FEI-1D31","SCANIA","R500 6X4","2021","612400"],
+   ["APARECIDO DONIZETE RAMOS","099.216.744-81","(16) 90000-0010","COOP. TRANSPOSEG",1290,28,"novo","DPF-9I40","MERC. BENZ","ATEGO 2426","2012","175900"]];
   DB.clientes=C.map(function(c){return {id:uid(),nome:c[0],doc:c[1],tel:c[2],mail:"",operadora:c[3],mensalidade:c[4],renovacao:dOff(c[5]),status:c[6],obs:"",
     veiculos:[{marca:c[8],modelo:c[9],ano:c[10],placa:c[7],fipe:c[11]}]};});
   var cobs=COBERTURAS_PADRAO.slice();
@@ -1749,7 +1749,7 @@ function seedDemo(){
   function op(n,v,t,e,mx,d){return {nome:n,vals:JSON.parse(JSON.stringify(v)),total:t,entrada:e||"",maxParc:mx,nota:"",destaque:!!d};}
   DB.propostas=[
    {id:uid(),num:"2026-001",data:dOff(-1),validadeDias:7,validadeAte:dOff(6),status:"enviada",obs:"Valores sujeitos a vistoria e análise cadastral.",
-    cliente:{nome:"TR GIMENEZ LOGISTICA E TRANSPORTES LTDA",doc:"35.158.499/0001-44",end:"",cep:"",carga:"Carga seca",tel:"(11) 98214-6633"},
+    cliente:{nome:"TR GIMENEZ LOGISTICA E TRANSPORTES LTDA",doc:"35.158.499/0001-44",end:"",cep:"",carga:"Carga seca",tel:"(11) 90000-0001"},
     veics:[{marca:"MERC. BENZ",ano:"2004",modelo:"1318 2 PORTAS DIESEL",placa:"BXF-6776",chassi:"",fipe:"98610",impl:"50000"}],
     cobs:cobs,ops:[op("PREVENIR TRUCK",prev,"10940,52","",12),op("COOPERVESC",coop,"12828,75","",11),op("COOP. TRANSPOSEG",tran,"10337,76","",12,true)]},
    {id:uid(),num:"2026-002",data:dOff(-3),validadeDias:7,validadeAte:dOff(4),status:"rascunho",obs:"",
