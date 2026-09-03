@@ -791,7 +791,7 @@ function fazImport(){
 }
 
 /* =================== PROPOSTAS =================== */
-var COBERTURAS_PADRAO=["Cobertura da Tabela FIPE","Valor do implemento","Franquia casco","Franquia semi-reboque / carroceria",
+var COBERTURAS_PADRAO=["Fipe","Valor do implemento","Participação obrigatória do Casco","Participação obrigatória do Semi-reboque","Participação obrigatória do Implemento","Participação obrigatória da Carroceria",
   "Colisão, incêndio, roubo, furto, tombamento","Fenômenos da natureza","Incêndio de qualquer natureza","DM/DC compartilhado",
   "Danos materiais","Danos corporais","Danos morais","APP Morte","APP Invalidez","Para-brisa / retrovisores",
   "Farol / lanterna / demais vidros","Assistência 24h após sinistro","Destombamento","Assistência 24h pane","Forma de pagamento"];
@@ -874,7 +874,7 @@ function abrirOrcamentoImportado(pr,nomeArq){
 }
 var propFiltro="todas";
 var propSit="todas";
-function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;}
+function nvProp(p){return (p.veics||[]).filter(function(v){return v.marca||v.modelo||v.placa||v.renavam||v.fipe||v.impl;}).length;}
 function propValor(p){
   var comTotal=(p.ops||[]).filter(function(o){return num(o.total)!=null;});
   if(!comTotal.length)return {total:null,com:null};
@@ -964,7 +964,7 @@ function waEnviarProposta(id){
 }
 function delProposta(id){if(!confirm("Apagar esta proposta?"))return;
   DB.propostas=DB.propostas.filter(function(x){return x.id!==id;});save();go("propostas");toast("Proposta apagada");}
-function veicVazio(){return {marca:"",ano:"",modelo:"",placa:"",chassi:"",fipe:"",impl:""};}
+function veicVazio(){return {marca:"",ano:"",modelo:"",placa:"",chassi:"",renavam:"",fipe:"",impl:""};}
 function novaProposta(tipo){
   P={id:uid(),num:String(new Date().getFullYear())+"-"+String(DB.seqProposta).padStart(3,"0"),data:hojeISO(),validadeDias:7,
     status:"rascunho",cliente:{nome:"",doc:"",end:"",cep:"",carga:"",tel:""},
@@ -990,7 +990,7 @@ PAGES.editProp=function(){
     '<div class="fr"><div class="inp"><label>📲 WhatsApp do cliente (pra enviar a proposta)</label><input id="pcTel" placeholder="(11) 90000-0000"></div><div></div></div></div>'+
     '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Veículos '+
     '<button class="btn sm" style="margin-left:auto" onclick="pAddVeic()">+ veículo</button></div>'+
-    '<div class="scrollx"><table class="ed" id="pvTable"><thead><tr><th style="width:30px">#</th><th>Marca</th><th style="width:64px">Ano</th><th>Modelo</th><th style="width:96px">Placa</th><th>Chassi</th><th style="width:104px">FIPE R$</th><th style="width:116px">Implemento R$</th><th style="width:26px"></th></tr></thead><tbody></tbody></table></div></div>'+
+    '<div class="scrollx"><table class="ed" id="pvTable"><thead><tr><th style="width:30px">#</th><th>Marca</th><th>Modelo</th><th style="width:64px">Ano</th><th style="width:96px">Placa</th><th>Chassi</th><th style="width:120px">Renavam</th><th style="width:26px"></th></tr></thead><tbody></tbody></table></div></div>'+
     '<div class="card" style="margin-bottom:14px"><div class="section-title" style="margin-top:0"><span class="bar"></span>Operadoras '+
     '<span style="margin-left:auto;display:flex;gap:8px"><button class="btn sm" onclick="pAddOp()">+ operadora</button><button class="btn sm" onclick="pAddCob()">+ linha</button></span></div>'+
     '<div class="scrollx"><div class="ops" id="pOpsGrid"></div></div>'+
@@ -1008,7 +1008,7 @@ PAGES.editProp=function(){
 function pegaCliente(){var n=$("pcNome").value;var c=DB.clientes.find(function(x){return x.nome===n;});if(!c)return;
   $("pcDoc").value=c.doc||"";if(c.tel&&!$("pcTel").value)$("pcTel").value=c.tel;
   if(c.veiculos&&c.veiculos.length&&!P.veics.some(function(v){return v.placa||v.modelo;})){
-    P.veics=c.veiculos.map(function(v){return {marca:v.marca||"",ano:v.ano||"",modelo:v.modelo||"",placa:v.placa||"",chassi:"",fipe:v.fipe||"",impl:""};});
+    P.veics=c.veiculos.map(function(v){return {marca:v.marca||"",ano:v.ano||"",modelo:v.modelo||"",placa:v.placa||"",chassi:"",renavam:"",fipe:v.fipe||"",impl:""};});
     pDrawVeics();toast("Veículos do cadastro do cliente preenchidos automaticamente");}
   atualizaBadge();}
 function drawPropEditor(){
@@ -1024,14 +1024,14 @@ function pDrawVeics(){
   P.veics.forEach(function(v,i){
     var tr=document.createElement("tr");
     tr.innerHTML='<td style="text-align:center;color:#98a0b0">'+(i+1)+'</td>'+
-      ["marca","ano","modelo","placa","chassi","fipe","impl"].map(function(k){
+      ["marca","modelo","ano","placa","chassi","renavam"].map(function(k){
         return '<td><input data-i="'+i+'" data-k="'+k+'" value="'+esc(v[k])+'"></td>';}).join("")+
       '<td><button class="del" onclick="pDelVeic('+i+')">✕</button></td>';
     tb.appendChild(tr);});
   tb.querySelectorAll("input").forEach(function(inp){
     inp.addEventListener("input",function(){P.veics[+inp.dataset.i][inp.dataset.k]=inp.value;atualizaBadge();});});
 }
-function atualizaBadge(){var nv=P.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;}).length;
+function atualizaBadge(){var nv=P.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.renavam||v.fipe||v.impl;}).length;
   var b=$("modoBadge");if(!b)return;b.textContent=nv>=2?("FROTA ("+nv+" veículos)"):"VEÍCULO ÚNICO";b.className="fbadge "+(nv>=2?"frota":"unico");}
 function pAddOp(){P.ops.push({nome:"",vals:{},total:"",entrada:"",maxParc:12,nota:"",destaque:false});pDrawOps();}
 function pDelOp(i){P.ops.splice(i,1);if(!P.ops.length)pAddOp();pDrawOps();}
@@ -1061,7 +1061,7 @@ function pDoCopy(oi,src){
 function pCell(html,cls){var d=document.createElement("div");if(cls)d.className=cls;d.innerHTML=html;return d;}
 function pDrawOps(){
   var g=$("pOpsGrid");if(!g)return;g.style.setProperty("--nop",P.ops.length);g.innerHTML="";
-  g.appendChild(pCell('<span class="rowlab">OPERADORA</span>',"ophd"));
+  g.appendChild(pCell('<span class="rowlab">COBERTURA</span>',"ophd"));
   P.ops.forEach(function(op,oi){
     var d=pCell("","ophd");
     d.innerHTML='<input placeholder="Nome" value="'+esc(op.nome)+'" oninput="P.ops['+oi+'].nome=this.value">'+
@@ -1117,10 +1117,10 @@ function fecharDoc(){ $("propOverlay").classList.remove("on"); if(P&&document.qu
 
 /* ====== documento (o PDF que o cliente recebe) ====== */
 function fmtVal(v){
-  if(v==null||v==="")return '<span class="no">—</span>';
+  if(v==null||String(v).trim()==="")return "";
   var s=String(v).trim(),l=s.toLowerCase();
   if(l==="sim")return '<span class="yes">✓ Sim</span>';
-  if(l==="não"||l==="nao")return '<span class="nay">✗ Não</span>';
+  if(l==="não"||l==="nao")return "";
   var n=num(s);
   if(n!=null&&String(s).replace(/[\d.,\s%]/g,"")===""){
     if(/%$/.test(s))return esc(s);
@@ -1132,7 +1132,7 @@ function renderDoc(p){
   var co=DB.corretora;var coNome=co.nome||"Sua Corretora";
   var lg=ini(coNome);
   var lgHtml=LOGO_LCN?'<div class="lg lgimg"><img src="'+LOGO_LCN+'" alt="'+esc(coNome)+'"></div>':'<div class="lg">'+esc(lg)+'</div>';
-  var nvList=p.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.fipe||v.impl;});
+  var nvList=p.veics.filter(function(v){return v.marca||v.modelo||v.placa||v.renavam||v.fipe||v.impl;});
   var frota=nvList.length>=2;
   var temZap=!!waLinkProposta(p);
   var h='<div class="po-doc"><div class="po-bar">'+
@@ -1146,19 +1146,19 @@ function renderDoc(p){
   h+='<div class="dsec"><h3>Dados do cliente</h3><div class="kv">'+
     kvi("Razão social / Nome",p.cliente.nome)+kvi("CNPJ / CPF",p.cliente.doc)+
     kvi("Endereço",p.cliente.end)+kvi("CEP",p.cliente.cep)+kvi("Tipo de carga",p.cliente.carga)+'</div></div>';
-  var somaF=0,somaI=0;
-  var rows=nvList.map(function(v,i){var f=num(v.fipe),im=num(v.impl);if(f)somaF+=f;if(im)somaI+=im;
-    return '<tr><td>'+(i+1)+'</td><td>'+esc(v.marca)+'</td><td>'+esc(v.ano)+'</td><td>'+esc(v.modelo)+'</td><td>'+esc(v.placa)+'</td><td>'+esc(v.chassi)+'</td>'+
-    '<td class="r">'+(f?brl(f):"—")+'</td><td class="r">'+(im?brl(im):"—")+'</td></tr>';}).join("");
+  var rows=nvList.map(function(v,i){
+    return '<tr><td>'+(i+1)+'</td><td>'+esc(v.marca)+'</td><td>'+esc(v.modelo)+'</td><td>'+esc(v.ano)+'</td><td>'+esc(v.placa)+'</td><td>'+esc(v.chassi)+'</td><td>'+esc(v.renavam||"")+'</td></tr>';}).join("");
   h+='<div class="dsec"><h3>Relação de veículos <span class="bdg fbadge '+(frota?'frota':'unico')+'">'+(frota?('FROTA · '+nvList.length+' VEÍCULOS'):'VEÍCULO ÚNICO')+'</span></h3>'+
-    '<div class="scrollx"><table class="dt"><thead><tr><th>#</th><th>Marca</th><th>Ano</th><th>Modelo</th><th>Placa</th><th>Chassi</th><th style="text-align:right">FIPE 100%</th><th style="text-align:right">Implemento</th></tr></thead><tbody>'+
-    (rows||'<tr><td colspan="8" style="color:#98a0b0">—</td></tr>')+'</tbody>'+
-    ((somaF||somaI)?('<tfoot><tr><td colspan="6">Valor total protegido</td><td class="r">'+(somaF?brl(somaF):"—")+'</td><td class="r">'+(somaI?brl(somaI):"—")+'</td></tr></tfoot>'):'')+'</table></div></div>';
+    '<div class="scrollx"><table class="dt"><thead><tr><th>#</th><th>Marca</th><th>Modelo</th><th>Ano</th><th>Placa</th><th>Chassi</th><th>Renavam</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="7" style="color:#98a0b0">—</td></tr>')+'</tbody></table></div></div>';
   var ops=p.ops.filter(function(o){return o.nome||o.total;});
   if(ops.length){
     h+='<div class="dsec"><h3>Comparativo das opções</h3><div class="scrollx"><table class="cmp"><thead><tr><th>Cobertura</th>'+
       ops.map(function(o){return '<th'+(o.destaque?' class="hi"':'')+'>'+esc(o.nome||"—")+(o.destaque?'<span class="star">RECOMENDADA</span>':'')+'</th>';}).join("")+'</tr></thead><tbody>'+
-      p.cobs.map(function(cb){return '<tr><td class="lab">'+esc(cb)+'</td>'+ops.map(function(o){return '<td class="val'+(o.destaque?' hi':'')+'">'+fmtVal(o.vals[cb])+'</td>';}).join("")+'</tr>';}).join("")+
+      p.cobs.map(function(cb){
+        var cels=ops.map(function(o){return fmtVal(o.vals[cb]);});
+        if(!cels.some(function(c){return c!=="";}))return "";
+        return '<tr><td class="lab">'+esc(cb)+'</td>'+cels.map(function(c,ci){return '<td class="val'+(ops[ci].destaque?' hi':'')+'">'+c+'</td>';}).join("")+'</tr>';}).join("")+
       '</tbody></table></div></div>';
     var maxN=Math.max.apply(null,ops.map(function(o){return Math.min(Math.max(parseInt(o.maxParc)||12,1),12);}));
     var temEntrada=ops.some(function(o){return num(o.entrada)&&num(o.total);});
@@ -1496,12 +1496,13 @@ function selftest(){
     T("doc: valor da entrada vira nota",doc.indexOf("entrada de R$ 6.177,67")>=0);
     T("doc: 1x da entrada = restante",doc.indexOf("Entrada + 1x de R$ 59.020,17")>=0);
     T("doc: a vista sem (1x)",doc.indexOf("À vista (1x)")<0&&doc.indexOf("À vista")>=0);
-    T("cobertura: Não sai em vermelho (classe nay)",fmtVal("Não").indexOf('class="nay"')>=0&&fmtVal("nao").indexOf('nay')>=0);
-    T("cobertura: vazio segue cinza (—)",fmtVal("").indexOf('class="no"')>=0);
+    T("cobertura: Não/vazio SOMEM da proposta (pedido do Luiz)",fmtVal("Não")===""&&fmtVal("nao")===""&&fmtVal("")===""&&fmtVal("  ")==="");
+    T("cobertura: Sim continua verde",fmtVal("Sim").indexOf("yes")>=0);
     T("LCN: logo embutido",typeof LOGO_LCN==="string"&&LOGO_LCN.length>2000);
     T("LCN: dados padrão",dbDefault().corretora.cnpj==="36.139.791/0001-82"&&dbDefault().corretora.nome.indexOf("LCN")>=0);
     T("doc: recomendada",doc.indexOf("RECOMENDADA")>=0);
-    T("doc: fipe format",doc.indexOf("98.610,00")>=0);
+    T("doc: placa na relação de veículos",doc.indexOf("BXF-6776")>=0);
+    T("doc: sem coluna FIPE nos veículos (pedido do Luiz)",doc.indexOf("FIPE 100%")<0&&doc.indexOf("Valor total protegido")<0);
     T("doc: veiculo unico",doc.indexOf("VEÍCULO ÚNICO")>=0);
     // frota
     p.veics.push({marca:"Volvo",ano:"2010",modelo:"FH",placa:"EJZ-8C33",chassi:"",fipe:"195223",impl:""});
@@ -1630,6 +1631,8 @@ function selftest(){
     T("LCN: endereço no rodapé da proposta",$("propOverlay").innerHTML.indexOf("Joaquim Nabuco")>=0);
     T("demo: proposta TR Gimenez gera doc",$("propOverlay").innerHTML.indexOf("TR GIMENEZ")>=0&&$("propOverlay").innerHTML.indexOf("911,71")>=0);
     T("demo: sem entrada NÃO tem linha 1x",$("propOverlay").innerHTML.indexOf("<td>1x</td>")<0);
+    T("doc: linha que ninguém cobre SOME (Valor do implemento)",$("propOverlay").innerHTML.indexOf(">Valor do implemento<")<0);
+    T("padrão: nomes do Luiz",COBERTURAS_PADRAO.indexOf("Fipe")===0&&COBERTURAS_PADRAO.indexOf("Participação obrigatória do Casco")>=0&&COBERTURAS_PADRAO.indexOf("Participação obrigatória do Semi-reboque")>=0&&COBERTURAS_PADRAO.indexOf("Participação obrigatória do Implemento")>=0&&COBERTURAS_PADRAO.indexOf("Participação obrigatória da Carroceria")>=0&&COBERTURAS_PADRAO.indexOf("Franquia casco")<0);
     renderDoc(DB.propostas[1]);
     T("demo: frota Coopervesc = Entrada + 11x de 5.365,47",$("propOverlay").innerHTML.indexOf("Entrada + 11x de R$ 5.365,47")>=0);
     // filtros do financeiro
@@ -1711,6 +1714,11 @@ function selftest(){
     T("editor: campo WhatsApp",!!$("pcTel"));
     $("pcNome").value="Cliente X";$("pcTel").value="(11) 97777-0000";colheProposta();
     T("editor: WhatsApp vai pra proposta",P.cliente.tel==="(11) 97777-0000");
+    T("editor: Modelo antes de Ano e coluna Renavam",PAGES.editProp().indexOf("<th>Marca</th><th>Modelo</th>")>=0&&PAGES.editProp().indexOf("Renavam")>=0&&PAGES.editProp().indexOf("FIPE R$")<0);
+    var inpR=document.querySelector('#pvTable input[data-k="renavam"]');
+    inpR.value="12345678901";inpR.dispatchEvent(new Event("input"));
+    T("editor: digitar Renavam salva",P.veics[0].renavam==="12345678901");
+    T("grid: cabeçalho COBERTURA (sem 2º Operadora)",pDrawOps.toString().indexOf("COBERTURA")>=0);
     // total do financeiro
     DB.fin=[{id:"f1",tipo:"entrada",valor:1000,data:"2026-01-15",desc:"EJan"},{id:"f2",tipo:"saida",valor:200,data:"2026-01-20",desc:"SJan"}];
     FINF={de:"2026-01-01",ate:"2026-01-31",preset:"",tipo:"todos"};
@@ -1743,9 +1751,9 @@ function seedDemo(){
   DB.clientes=C.map(function(c){return {id:uid(),nome:c[0],doc:c[1],tel:c[2],mail:"",operadora:c[3],mensalidade:c[4],renovacao:dOff(c[5]),status:c[6],obs:"",
     veiculos:[{marca:c[8],modelo:c[9],ano:c[10],placa:c[7],fipe:c[11]}]};});
   var cobs=COBERTURAS_PADRAO.slice();
-  var prev={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"6% da FIPE","Franquia semi-reboque / carroceria":"6% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"Não","Danos materiais":"100000","Danos corporais":"100000","Danos morais":"60000","APP Morte":"30000","APP Invalidez":"30000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 40%","Farol / lanterna / demais vidros":"Não","Assistência 24h após sinistro":"Sim","Destombamento":"Até 10 salários","Assistência 24h pane":"150km ida e volta · 1x a cada 90 dias","Forma de pagamento":"Boleto"};
-  var coop={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"5% da FIPE","Franquia semi-reboque / carroceria":"10% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Não","Incêndio de qualquer natureza":"Não","DM/DC compartilhado":"Não","Danos materiais":"300000","Danos corporais":"300000","Danos morais":"50000","APP Morte":"100000","APP Invalidez":"100000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 30%","Farol / lanterna / demais vidros":"Sim 2x a.a. · part. 30%","Assistência 24h após sinistro":"Sim","Destombamento":"Não tem","Assistência 24h pane":"500km ida e volta · 2x a.a.","Forma de pagamento":"Boleto"};
-  var tran={"Cobertura da Tabela FIPE":"100% FIPE","Valor do implemento":"Não","Franquia casco":"4% da FIPE","Franquia semi-reboque / carroceria":"4% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"300000","Danos materiais":"Vide DM/DC","Danos corporais":"Vide DM/DC","Danos morais":"30000","APP Morte":"50000","APP Invalidez":"50000","Para-brisa / retrovisores":"Até R$ 6.000 · part. 40%","Farol / lanterna / demais vidros":"Até R$ 6.000 · part. 40%","Assistência 24h após sinistro":"Ilimitado","Destombamento":"Até R$ 4.000","Assistência 24h pane":"400km de raio · 4x a.a. (a cada 30 dias)","Forma de pagamento":"Boleto"};
+  var prev={"Fipe":"100% FIPE","Valor do implemento":"Não","Participação obrigatória do Casco":"6% da FIPE","Participação obrigatória do Semi-reboque":"6% do valor","Participação obrigatória do Implemento":"6% do valor","Participação obrigatória da Carroceria":"6% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"Não","Danos materiais":"100000","Danos corporais":"100000","Danos morais":"60000","APP Morte":"30000","APP Invalidez":"30000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 40%","Farol / lanterna / demais vidros":"Não","Assistência 24h após sinistro":"Sim","Destombamento":"Até 10 salários","Assistência 24h pane":"150km ida e volta · 1x a cada 90 dias","Forma de pagamento":"Boleto"};
+  var coop={"Fipe":"100% FIPE","Valor do implemento":"Não","Participação obrigatória do Casco":"5% da FIPE","Participação obrigatória do Semi-reboque":"10% do valor","Participação obrigatória do Implemento":"10% do valor","Participação obrigatória da Carroceria":"10% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Não","Incêndio de qualquer natureza":"Não","DM/DC compartilhado":"Não","Danos materiais":"300000","Danos corporais":"300000","Danos morais":"50000","APP Morte":"100000","APP Invalidez":"100000","Para-brisa / retrovisores":"Sim 2x a.a. · part. 30%","Farol / lanterna / demais vidros":"Sim 2x a.a. · part. 30%","Assistência 24h após sinistro":"Sim","Destombamento":"Não tem","Assistência 24h pane":"500km ida e volta · 2x a.a.","Forma de pagamento":"Boleto"};
+  var tran={"Fipe":"100% FIPE","Valor do implemento":"Não","Participação obrigatória do Casco":"4% da FIPE","Participação obrigatória do Semi-reboque":"4% do valor","Participação obrigatória do Implemento":"4% do valor","Participação obrigatória da Carroceria":"4% do valor","Colisão, incêndio, roubo, furto, tombamento":"Sim","Fenômenos da natureza":"Sim","Incêndio de qualquer natureza":"Sim","DM/DC compartilhado":"300000","Danos materiais":"Vide DM/DC","Danos corporais":"Vide DM/DC","Danos morais":"30000","APP Morte":"50000","APP Invalidez":"50000","Para-brisa / retrovisores":"Até R$ 6.000 · part. 40%","Farol / lanterna / demais vidros":"Até R$ 6.000 · part. 40%","Assistência 24h após sinistro":"Ilimitado","Destombamento":"Até R$ 4.000","Assistência 24h pane":"400km de raio · 4x a.a. (a cada 30 dias)","Forma de pagamento":"Boleto"};
   function op(n,v,t,e,mx,d){return {nome:n,vals:JSON.parse(JSON.stringify(v)),total:t,entrada:e||"",maxParc:mx,nota:"",destaque:!!d};}
   DB.propostas=[
    {id:uid(),num:"2026-001",data:dOff(-1),validadeDias:7,validadeAte:dOff(6),status:"enviada",obs:"Valores sujeitos a vistoria e análise cadastral.",
